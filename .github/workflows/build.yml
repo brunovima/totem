@@ -1,0 +1,100 @@
+name: Build TOTEM
+
+# Gatilhos: push na main OU disparo manual pelo painel do GitHub
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false   # se um OS falhar, os outros continuam
+      matrix:
+        os:
+          - windows-latest
+          - macos-latest
+          - ubuntu-latest
+
+    runs-on: ${{ matrix.os }}
+
+    steps:
+      # ── 1. Checkout ──────────────────────────────────────────────────────────
+      - name: Checkout código
+        uses: actions/checkout@v4
+
+      # ── 2. Node.js ───────────────────────────────────────────────────────────
+      - name: Configurar Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      # ── 3. Dependências de compilação nativa (better-sqlite3) ────────────────
+      # Python + node-gyp são necessários para compilar módulos nativos
+      - name: Configurar Python (node-gyp)
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      # Windows precisa das Build Tools do Visual Studio
+      - name: Instalar dependências de build (Windows)
+        if: runner.os == 'Windows'
+        run: npm install --global windows-build-tools
+        continue-on-error: true   # pode já estar instalado na imagem
+
+      # Linux precisa de libs para Electron e rpmbuild/fakeroot para empacotamento
+      - name: Instalar dependências de sistema (Linux)
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update -q
+          sudo apt-get install -y \
+            libnss3-dev libatk1.0-0 libatk-bridge2.0-0 \
+            libcups2 libdrm2 libxkbcommon0 libxcomposite1 \
+            libxdamage1 libxfixes3 libxrandr2 libgbm1 \
+            libasound2 fakeroot rpm
+
+      # ── 4. Instalar dependências npm ─────────────────────────────────────────
+      # O hook postinstall recompila better-sqlite3 para a versão correta do Electron
+      - name: Instalar dependências (npm ci)
+        run: npm ci
+
+      # ── 5. Build e empacotamento ─────────────────────────────────────────────
+      - name: Build e empacotar (${{ matrix.os }})
+        run: npm run release
+        env:
+          # Desativa notarização macOS no CI (requer conta paga da Apple)
+          CSC_IDENTITY_AUTO_DISCOVERY: false
+          # Desativa publicação automática — só queremos o artefato
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      # ── 6. Upload dos artefatos gerados ──────────────────────────────────────
+      - name: Upload instalador Windows (.exe)
+        if: runner.os == 'Windows'
+        uses: actions/upload-artifact@v4
+        with:
+          name: TOTEM-Windows
+          path: dist/*-setup.exe
+          if-no-files-found: error
+          retention-days: 30
+
+      - name: Upload instalador macOS (.dmg + .zip)
+        if: runner.os == 'macOS'
+        uses: actions/upload-artifact@v4
+        with:
+          name: TOTEM-macOS
+          path: |
+            dist/*.dmg
+            dist/*.zip
+          if-no-files-found: error
+          retention-days: 30
+
+      - name: Upload instalador Linux (.AppImage)
+        if: runner.os == 'Linux'
+        uses: actions/upload-artifact@v4
+        with:
+          name: TOTEM-Linux
+          path: dist/*.AppImage
+          if-no-files-found: error
+          retention-days: 30
