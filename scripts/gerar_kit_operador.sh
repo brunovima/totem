@@ -64,13 +64,22 @@ if [ "$SKIP_BUILD" = false ]; then
   log "Empacotando para macOS..."
   npm run build:mac && log "✓ macOS concluído" || warn "Build macOS falhou — continuando sem binários macOS"
 
-  log "Empacotando para Windows..."
-  if command -v wine &>/dev/null; then
-    npm run build:win && log "✓ Windows concluído" || warn "Build Windows falhou — wine pode estar desatualizado"
-  else
-    warn "wine não encontrado — pulando build Windows."
-    warn "  Para instalar: brew install --cask wine-stable"
-  fi
+  # ATENÇÃO: build Windows cross-compilado do Mac gera better_sqlite3.node inválido no Windows.
+  # O .exe para o kit DEVE vir do GitHub Actions (windows-latest runner).
+  echo ""
+  echo -e "${RED}${BOLD}  !! AVISO CRÍTICO — BUILD WINDOWS !!${NC}"
+  echo -e "${YELLOW}  O instalador .exe NÃO deve ser gerado aqui (Mac).${NC}"
+  echo -e "${YELLOW}  better-sqlite3 é um módulo nativo C++ — compilado no Mac,${NC}"
+  echo -e "${YELLOW}  o arquivo .node resulta em erro no Windows:${NC}"
+  echo -e "${YELLOW}  \"não é um aplicativo Win32 válido\"${NC}"
+  echo ""
+  echo -e "${BOLD}  SOLUÇÃO: usar o GitHub Actions para gerar o .exe${NC}"
+  echo -e "  1. Acesse: seu repositório → Actions → \"Build TOTEM\""
+  echo -e "  2. Clique em \"Run workflow\" (branch: main)"
+  echo -e "  3. Aguarde ~10 min e baixe o artefato \"TOTEM-Windows\""
+  echo -e "  4. Coloque o .exe baixado em dist/ e rode: bash scripts/gerar_kit_operador.sh --skip-build"
+  echo ""
+  warn "Pulando build Windows — use o artefato do GitHub Actions."
 
   log "Empacotando para Linux..."
   npm run build:linux && log "✓ Linux concluído" || warn "Build Linux falhou — continuando sem binários Linux"
