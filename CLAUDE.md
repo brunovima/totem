@@ -252,6 +252,15 @@ docker-compose up --build   # sobe container com Xvfb
 ### Estratégia
 **Não usar Docker para produção.** Empacotamento nativo via `electron-builder` em ambientes reais (Windows, macOS, Linux) para garantir compilação correta do `better-sqlite3`.
 
+> **CRÍTICO — Instalador Windows:**
+> `npm run build:win` executado no macOS gera um `.exe` com `better_sqlite3.node` compilado para macOS.
+> O Windows recusa carregar esse binário com erro "não é um aplicativo Win32 válido".
+> **O `.exe` para distribuição DEVE vir do artefato `TOTEM-Windows` gerado pelo GitHub Actions (`windows-latest`).**
+> Fluxo correto do kit:
+> 1. Push → CI roda → baixar artefato `TOTEM-Windows` do GitHub Actions
+> 2. Copiar o `.exe` para `dist/`
+> 3. Executar `bash scripts/gerar_kit_operador.sh --skip-build`
+
 ### Blindagem Kiosk (produção)
 
 Em `src/main/index.js`, a `BrowserWindow` de produção usa:
@@ -330,6 +339,10 @@ Arquivo: `.github/workflows/build.yml`
    - `net.fetch('file://...')` não suporta range requests → substituído por `createReadStream` com HTTP 206
 5. **Logo não aparecia** — `buildMediaUrl` não encodava espaços no path; corrigido com encode por segmento
 6. **JSON.parse crash** — coluna `options` malformada no DB; envolvido em try/catch
+7. **`better-sqlite3.node` inválido no Windows** — erro "não é um aplicativo Win32 válido" ao instalar o .exe gerado no Mac. Causa: `npmRebuild: true` no `electron-builder.yml` não consegue cross-compilar módulos nativos C++ do macOS para Windows — o `.node` incluído no instalador é o binário macOS. **Solução definitiva: o instalador Windows (.exe) DEVE ser gerado pelo GitHub Actions em um runner `windows-latest`.** Nunca gerar o .exe para Windows a partir do macOS.
+8. **GitHub Actions YAML inválido (Linha 42)** — step com `name`/`if`/`continue-on-error` mas sem `run` ou `uses` é YAML inválido. Corrigido removendo o step vazio e deixando apenas um comentário inline na etapa anterior.
+9. **Tela preta + só áudio na troca de mídia** — race condition: `videoReady` resetado via `useEffect([idx])` rodava após o render, expondo o frame preto. Corrigido com `readyIdx` (estado numérico): `videoReady = readyIdx === idx` é reset síncrono no render, sem delay.
+10. **ABI mismatch better-sqlite3 (testes)** — 15 testes falhavam: Node do sistema (ABI 127) vs Electron (ABI 140). Corrigido com `pretest`/`posttest` no package.json que recompilam o módulo antes e depois dos testes.
 
 ---
 
