@@ -38,12 +38,8 @@ jobs:
         with:
           python-version: '3.11'
 
-      # Windows precisa das Build Tools do Visual Studio
-      - name: Instalar dependências de build (Windows)
-        if: runner.os == 'Windows'
-        continue-on-error: true   # pode já estar instalado na imagem
-
       # Linux precisa de libs para Electron e rpmbuild/fakeroot para empacotamento
+      # Windows: windows-latest já inclui Visual Studio Build Tools — nada a instalar.
       - name: Instalar dependências de sistema (Linux)
         if: runner.os == 'Linux'
         run: |
