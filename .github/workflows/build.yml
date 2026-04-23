@@ -41,7 +41,6 @@ jobs:
       # Windows precisa das Build Tools do Visual Studio
       - name: Instalar dependências de build (Windows)
         if: runner.os == 'Windows'
-        run: npm install --global windows-build-tools
         continue-on-error: true   # pode já estar instalado na imagem
 
       # Linux precisa de libs para Electron e rpmbuild/fakeroot para empacotamento
