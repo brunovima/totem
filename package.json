@@ -30,7 +30,8 @@
     "release:mac": "bash scripts/package_release.sh mac",
     "release:linux": "bash scripts/package_release.sh linux",
     "release:win": "scripts\\package_release.bat",
-    "start:container": "electron --no-sandbox out/main/index.js"
+    "start:container": "electron --no-sandbox out/main/index.js",
+    "sync": "bash scripts/sync_github.sh"
   },
   "dependencies": {
     "@electron-toolkit/preload": "^3.0.2",
