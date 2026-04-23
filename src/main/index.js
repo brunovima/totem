@@ -1,7 +1,7 @@
 import { app, shell, BrowserWindow, ipcMain, dialog, protocol, session, net, globalShortcut } from 'electron'
 import { join, basename, extname } from 'path'
 import { copyFileSync, mkdirSync, existsSync, readdirSync, unlinkSync } from 'fs'
-import { execFile } from 'child_process'
+import { execFile, spawn } from 'child_process'
 import { promisify } from 'util'
 import { networkInterfaces } from 'os'
 import express from 'express'
@@ -32,6 +32,16 @@ let energyInterval = null
 
 // ─── YouTube helpers ───────────────────────────────────────────────────────────
 
+function detectSocialPlatform(url) {
+  if (!url) return null
+  if (/instagram\.com\/(p|reel|tv|stories)\//.test(url)) return 'instagram'
+  if (/tiktok\.com\/@[\w.]+\/video\/\d+/.test(url) ||
+      /vm\.tiktok\.com\//.test(url) ||
+      /tiktok\.com\/t\//.test(url) ||
+      /tiktok\.com\/v\//.test(url)) return 'tiktok'
+  return null
+}
+
 function extractYouTubeVideoId(url) {
   if (!url) return null
   const m =
@@ -40,6 +50,29 @@ function extractYouTubeVideoId(url) {
     url.match(/youtube\.com\/embed\/([^?&#]+)/) ||
     url.match(/youtube\.com\/shorts\/([^?&#]+)/)
   return m ? m[1] : null
+}
+
+// ─── yt-dlp helper: spawn com timeout rigoroso de 60s + SIGKILL ──────────────
+// Retorna Promise<{stdout, stderr}> — rejeita se timeout ou exit code != 0
+function spawnWithTimeout(bin, args, timeoutMs = 60_000) {
+  return new Promise((resolve, reject) => {
+    const proc = spawn(bin, args, { stdio: ['ignore', 'pipe', 'pipe'] })
+    let stdout = '', stderr = ''
+    proc.stdout.on('data', (d) => { stdout += d })
+    proc.stderr.on('data', (d) => { stderr += d })
+
+    const timer = setTimeout(() => {
+      try { process.kill(proc.pid, 'SIGKILL') } catch {}
+      reject(new Error(`yt-dlp timeout após ${timeoutMs / 1000}s`))
+    }, timeoutMs)
+
+    proc.on('close', (code) => {
+      clearTimeout(timer)
+      if (code === 0) resolve({ stdout, stderr })
+      else reject(new Error(stderr || `exit code ${code}`))
+    })
+    proc.on('error', (err) => { clearTimeout(timer); reject(err) })
+  })
 }
 
 // ─── Helpers WiFi ─────────────────────────────────────────────────────────────
@@ -261,7 +294,50 @@ function createWindow() {
   }
 }
 
-// ─── Bootstrap ────────────────────────────────────────────────────────────────
+// ─── Botão de Pânico: reset de senha via flag --reset-password ───────────────
+// Uso: TOTEM.exe --reset-password   (Windows)
+//      TOTEM.app/Contents/MacOS/TOTEM --reset-password  (macOS)
+// Não abre janela — apenas reseta a senha e encerra.
+
+if (process.argv.includes('--reset-password')) {
+  app.whenReady().then(async () => {
+    try {
+      const dbPath = join(app.getPath('userData'), 'totem.db')
+
+      // Importação dinâmica para garantir que o módulo nativo está disponível
+      const Database = (await import('better-sqlite3')).default
+      const panicDb  = new Database(dbPath)
+
+      // Garante que a tabela existe (instalação nova ou corrompida)
+      panicDb.exec(`
+        CREATE TABLE IF NOT EXISTS settings (key TEXT PRIMARY KEY, value TEXT)
+      `)
+
+      panicDb.prepare("INSERT OR REPLACE INTO settings (key, value) VALUES ('admin_password', '1234')").run()
+      panicDb.close()
+
+      await dialog.showMessageBox({
+        type: 'info',
+        title: 'TOTEM — Reset de Senha',
+        message: 'Senha redefinida com sucesso.',
+        detail: 'A senha do administrador voltou para: 1234\n\nO aplicativo será encerrado.',
+        buttons: ['OK']
+      })
+    } catch (err) {
+      await dialog.showMessageBox({
+        type: 'error',
+        title: 'TOTEM — Erro no Reset',
+        message: 'Não foi possível redefinir a senha.',
+        detail: `Detalhe: ${err.message}\n\nVerifique se o aplicativo não está aberto em outra instância.`,
+        buttons: ['OK']
+      })
+    } finally {
+      app.quit()
+    }
+  })
+} else {
+
+// ─── Bootstrap (inicialização normal) ────────────────────────────────────────
 
 app.whenReady().then(() => {
   initDB()
@@ -372,6 +448,14 @@ app.whenReady().then(() => {
     return { name: basename(src), filename }
   })
 
+  // ── Sair do modo kiosk/tela cheia (uso exclusivo do admin) ─────────────
+  ipcMain.handle('exit-kiosk', () => {
+    if (!mainWindow || mainWindow.isDestroyed()) return
+    mainWindow.setKiosk(false)
+    mainWindow.setFullScreen(false)
+    mainWindow.setAlwaysOnTop(false)
+  })
+
   // ── Dormir tela imediatamente ────────────────────────────────────────────
   ipcMain.handle('display-sleep', async () => {
     try {
@@ -410,7 +494,16 @@ app.whenReady().then(() => {
     return { name: basename(src), path: dest }
   })
 
-  // ── yt-dlp: download YouTube como MP4 local ──────────────────────────────
+  // ── Validação de URL Instagram / TikTok ─────────────────────────────────
+  ipcMain.handle('process-social', (_e, url) => {
+    const platform = detectSocialPlatform(url)
+    if (!platform) return { type: 'invalid' }
+    return { type: platform, platform }
+  })
+
+  // ── yt-dlp: download como MP4 local (YouTube, Instagram, TikTok) ─────────
+  // Estratégia: tenta sem cookies → chrome → edge/brave → safari → firefox
+  // Timeout rigoroso de 60s com SIGKILL para não travar a fila.
   ipcMain.handle('start-ytdlp-download', async (_e, { id, url }) => {
     const ytdlpCandidates = [
       '/usr/local/bin/yt-dlp',
@@ -420,29 +513,52 @@ app.whenReady().then(() => {
     ]
     const ytdlpBin = ytdlpCandidates.find((p) => existsSync(p))
     if (!ytdlpBin) {
+      db.prepare("UPDATE media SET download_status='error' WHERE id=?").run(id)
+      mainWindow?.webContents.send('download:progress', { id, status: 'error', error: 'yt-dlp não encontrado' })
       return { ok: false, error: 'yt-dlp não encontrado. Instale com: brew install yt-dlp' }
     }
+
     const mediaDir = join(app.getPath('userData'), 'media')
     if (!existsSync(mediaDir)) mkdirSync(mediaDir, { recursive: true })
     const filename = `ytdlp_${id}_${Date.now()}.mp4`
     const outPath  = join(mediaDir, filename)
+
     db.prepare("UPDATE media SET download_status='downloading' WHERE id=?").run(id)
     mainWindow?.webContents.send('download:progress', { id, status: 'downloading' })
-    try {
-      await execFileAsync(ytdlpBin, [
-        '-f', 'bestvideo[ext=mp4]+bestaudio[ext=m4a]/best[ext=mp4]/best',
-        '--merge-output-format', 'mp4',
-        '-o', outPath,
-        url
-      ])
-      db.prepare("UPDATE media SET download_status='done', local_file=? WHERE id=?").run(filename, id)
-      mainWindow?.webContents.send('download:progress', { id, status: 'done', filename })
-      return { ok: true, filename }
-    } catch (err) {
-      db.prepare("UPDATE media SET download_status='error' WHERE id=?").run(id)
-      mainWindow?.webContents.send('download:progress', { id, status: 'error', error: err.message })
-      return { ok: false, error: err.message }
+
+    const baseArgs = [
+      '-f', 'bestvideo[ext=mp4]+bestaudio[ext=m4a]/best[ext=mp4]/best',
+      '--merge-output-format', 'mp4',
+      '--no-playlist',
+      '-o', outPath
+    ]
+
+    // Sequência de tentativas: sem cookies primeiro, depois por navegador
+    const cookieStrategies = [null, 'chrome', 'edge', 'brave', 'safari', 'firefox']
+
+    let lastError = null
+    for (const browser of cookieStrategies) {
+      try {
+        const args = browser
+          ? [...baseArgs, '--cookies-from-browser', browser, url]
+          : [...baseArgs, url]
+        await spawnWithTimeout(ytdlpBin, args, 60_000)
+        // Sucesso: ativa o item na playlist e marca como concluído
+        db.prepare("UPDATE media SET download_status='done', local_file=?, active=1 WHERE id=?").run(filename, id)
+        mainWindow?.webContents.send('download:progress', { id, status: 'done', filename })
+        return { ok: true, filename }
+      } catch (err) {
+        lastError = err
+        // Timeout → não adianta tentar outros navegadores
+        if (err.message.includes('timeout')) break
+        // Arquivo parcial gerado — remove antes de nova tentativa
+        try { if (existsSync(outPath)) unlinkSync(outPath) } catch {}
+      }
     }
+
+    db.prepare("UPDATE media SET download_status='error' WHERE id=?").run(id)
+    mainWindow?.webContents.send('download:progress', { id, status: 'error', error: lastError?.message })
+    return { ok: false, error: lastError?.message }
   })
 
   // ── Validação + pipeline YouTube ────────────────────────────────────────
@@ -619,6 +735,8 @@ app.whenReady().then(() => {
     if (BrowserWindow.getAllWindows().length === 0) createWindow()
   })
 })
+
+} // fim do else (modo normal)
 
 app.on('will-quit', () => {
   globalShortcut.unregisterAll()

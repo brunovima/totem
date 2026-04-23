@@ -84,9 +84,11 @@ export default function AdminPanel({ onLogout }) {
   // ── Mídia ──
   const [allMedia, setAllMedia]       = useState([])
   const [playlist, setPlaylist]       = useState([])
-  const [youtubeUrl, setYoutubeUrl]   = useState('')
-  const [webpageUrl, setWebpageUrl]   = useState('')
-  const [webpageName, setWebpageName] = useState('')
+  const [youtubeUrl, setYoutubeUrl]       = useState('')
+  const [instagramUrl, setInstagramUrl]   = useState('')
+  const [tiktokUrl, setTiktokUrl]         = useState('')
+  const [webpageUrl, setWebpageUrl]       = useState('')
+  const [webpageName, setWebpageName]     = useState('')
   const [pendingFile, setPendingFile]   = useState(null) // { name, filename }
   const [pendingImage, setPendingImage] = useState(null) // { name, filename }
   const [editDuration, setEditDuration]     = useState({})
@@ -251,6 +253,22 @@ export default function AdminPanel({ onLogout }) {
     refreshData()
   }
 
+  const handleAddSocial = async (url, setUrl, platform) => {
+    if (!url.trim()) { showFeedback('Cole a URL do vídeo.'); return }
+    const result = await window.api.processSocial(url.trim())
+    if (result.type === 'invalid') {
+      showFeedback(`URL inválida para ${platform === 'instagram' ? 'Instagram' : 'TikTok'}.`)
+      return
+    }
+    const id = await window.api.saveMedia({ name: url.trim(), type: platform, source: url.trim() })
+    setUrl('')
+    showFeedback(`${platform === 'instagram' ? 'Instagram' : 'TikTok'} adicionado! Download iniciando…`)
+    // Dispara o download imediatamente — sem arquivo local não há como reproduzir
+    setDownloadStatus((prev) => ({ ...prev, [id]: 'downloading' }))
+    window.api.startYoutubeDownload({ id, url: url.trim() }).catch(() => {})
+    refreshData()
+  }
+
   const handleDownloadYoutube = async (m) => {
     setDownloadStatus((prev) => ({ ...prev, [m.id]: 'downloading' }))
     const result = await window.api.startYoutubeDownload({ id: m.id, url: m.source })
@@ -354,12 +372,17 @@ export default function AdminPanel({ onLogout }) {
 
   const inPlaylist = (id) => playlist.some((p) => p.id === id)
 
-  const typeStyle = (type) => ({
-    icon:  type === 'youtube' ? '▶' : type === 'image' ? '🖼' : type === 'webpage' ? '🌐' : '🎬',
-    label: type === 'youtube' ? 'YOUTUBE' : type === 'image' ? 'IMAGEM' : type === 'webpage' ? 'WEBPAGE' : 'LOCAL',
-    bg:    type === 'youtube' ? '#fee2e2' : type === 'image' ? '#f3e8ff' : type === 'webpage' ? '#e0f2fe' : '#dbeafe',
-    color: type === 'youtube' ? '#b91c1c' : type === 'image' ? '#7e22ce' : type === 'webpage' ? '#0369a1' : '#1d4ed8'
-  })
+  const typeStyle = (type) => {
+    const map = {
+      youtube:   { icon: '▶',  label: 'YOUTUBE',   bg: '#fee2e2', color: '#b91c1c' },
+      instagram: { icon: '📷', label: 'INSTAGRAM',  bg: '#fce7f3', color: '#9d174d' },
+      tiktok:    { icon: '🎵', label: 'TIKTOK',     bg: '#f0fdf4', color: '#166534' },
+      image:     { icon: '🖼', label: 'IMAGEM',     bg: '#f3e8ff', color: '#7e22ce' },
+      webpage:   { icon: '🌐', label: 'WEBPAGE',    bg: '#e0f2fe', color: '#0369a1' },
+      file:      { icon: '🎬', label: 'LOCAL',      bg: '#dbeafe', color: '#1d4ed8' },
+    }
+    return map[type] || map.file
+  }
 
   // ═════════════════════════════════════════════════════════════════════════════
   return (
@@ -378,6 +401,13 @@ export default function AdminPanel({ onLogout }) {
           <button onClick={() => changeTab('configuracoes')} style={navBtn(tab === 'configuracoes')}>⚙️ Configurações</button>
           <button onClick={() => changeTab('diagnostico')}   style={navBtn(tab === 'diagnostico')}>🔬 Diagnóstico</button>
         </nav>
+        <button
+          onClick={() => window.api.exitKiosk()}
+          style={{ padding: '12px', background: '#7c3aed', color: 'white', border: 'none', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold', fontFamily: FONT, marginBottom: '8px' }}
+          title="Sai do modo tela cheia para acessar o SO"
+        >
+          ⛶ SAIR DO KIOSK
+        </button>
         <button onClick={onLogout} style={{ padding: '12px', background: '#ef4444', color: 'white', border: 'none', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold', fontFamily: FONT }}>
           SAIR DO PAINEL
         </button>
@@ -688,6 +718,48 @@ export default function AdminPanel({ onLogout }) {
                 )}
               </div>
               <p style={{ color: '#94a3b8', fontSize: '12px', marginBottom: 0, marginTop: '10px' }}>Formatos: PNG, JPG, JPEG, WebP, GIF, SVG</p>
+            </div>
+
+            {/* ── Instagram ── */}
+            <div style={S.card}>
+              <h3 style={{ marginTop: 0 }}>📷 Adicionar Vídeo do Instagram</h3>
+              <div style={{ background: '#fdf2f8', border: '1px solid #f9a8d4', borderRadius: '10px', padding: '12px 16px', marginBottom: '16px', fontSize: '13px', color: '#831843', lineHeight: 1.5 }}>
+                <strong>Formatos aceitos:</strong> Posts, Reels e IGTV públicos.<br />
+                O vídeo será <strong>baixado via yt-dlp</strong> e salvo localmente — reproduzido offline após o download.
+              </div>
+              <div style={{ display: 'flex', gap: '10px' }}>
+                <input
+                  placeholder="https://www.instagram.com/reel/..."
+                  value={instagramUrl}
+                  onChange={(e) => setInstagramUrl(e.target.value)}
+                  onKeyDown={(e) => e.key === 'Enter' && handleAddSocial(instagramUrl, setInstagramUrl, 'instagram')}
+                  style={{ ...S.input, flex: 1 }}
+                />
+                <button onClick={() => handleAddSocial(instagramUrl, setInstagramUrl, 'instagram')} style={S.btn('#db2777')}>
+                  ADICIONAR
+                </button>
+              </div>
+            </div>
+
+            {/* ── TikTok ── */}
+            <div style={S.card}>
+              <h3 style={{ marginTop: 0 }}>🎵 Adicionar Vídeo do TikTok</h3>
+              <div style={{ background: '#f0fdf4', border: '1px solid #86efac', borderRadius: '10px', padding: '12px 16px', marginBottom: '16px', fontSize: '13px', color: '#166534', lineHeight: 1.5 }}>
+                <strong>Formatos aceitos:</strong> Vídeos públicos (URL longa ou link curto vm.tiktok.com).<br />
+                O vídeo será <strong>baixado via yt-dlp</strong> e salvo localmente — reproduzido offline após o download.
+              </div>
+              <div style={{ display: 'flex', gap: '10px' }}>
+                <input
+                  placeholder="https://www.tiktok.com/@usuario/video/..."
+                  value={tiktokUrl}
+                  onChange={(e) => setTiktokUrl(e.target.value)}
+                  onKeyDown={(e) => e.key === 'Enter' && handleAddSocial(tiktokUrl, setTiktokUrl, 'tiktok')}
+                  style={{ ...S.input, flex: 1 }}
+                />
+                <button onClick={() => handleAddSocial(tiktokUrl, setTiktokUrl, 'tiktok')} style={S.btn('#16a34a')}>
+                  ADICIONAR
+                </button>
+              </div>
             </div>
 
             {/* ── Página Web ── */}

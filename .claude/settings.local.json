@@ -26,7 +26,24 @@
       "Bash(npx skills *)",
       "Bash(npx -y skills find \"stitch react\")",
       "Bash(python3 *)",
-      "Bash(chmod +x *)"
+      "Bash(chmod +x *)",
+      "Bash(osascript *)",
+      "Bash(open *)",
+      "Bash(echo \"PID: $!\")",
+      "Bash(kill 88019)",
+      "Bash(pkill -f \"electron-vite dev\")",
+      "Bash(npx vitest *)",
+      "Bash(./node_modules/.bin/electron -e \"console.log\\('Electron Node ABI:', process.versions.modules\\); process.exit\\(0\\)\")",
+      "Bash(npm rebuild *)",
+      "Bash(npx playwright *)",
+      "Bash(node_modules/.bin/electron-rebuild -f -w better-sqlite3)",
+      "Bash(npm test *)",
+      "Bash(npm outdated *)",
+      "Bash(npx electron-builder *)",
+      "Bash(bash *)",
+      "Bash(unzip -l ~/Desktop/Kit_Operador_TOTEM_V1.0.0.zip)",
+      "Bash(grep -v \"^Archive\\\\|^---\\\\|files$\")",
+      "Bash(awk '{print $NF}')"
     ]
   }
 }

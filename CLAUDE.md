@@ -59,7 +59,7 @@ Arquivo: `app.getPath('userData')/totem.db`
 | `questions` | `id, quiz_id, text, options (JSON), correctIndex` |
 | `leads` | `id, nome, email, score, data_hora` |
 | `settings` | `key (PK), value` |
-| `media` | `id, name, type (file\|youtube), source, active, playlist_order, duration, created_at` |
+| `media` | `id, name, type (file\|youtube\|instagram\|tiktok\|image\|webpage), source, active, playlist_order, duration, created_at` |
 
 ### Migrations (aplicadas via try/catch em initDB)
 ```js
@@ -198,9 +198,22 @@ video → (ícone 🔒) → login → admin
 ## Playlist de vídeos
 
 - `active=1` + `playlist_order` determinam a sequência
-- Vídeos locais: avança via `onEnded` (quando há mais de 1 item)
-- YouTube: avança via `setTimeout(handleNext, duration * 1000)`
+- Vídeos locais (`file`): avança via `onEnded` (quando há mais de 1 item)
+- YouTube: avança via `setTimeout(handleNext, duration * 1000)`; fallback para local_file se iframe falhar
 - Loop: se só 1 item, vídeo local faz `loop`, YouTube reinicia via parâmetro `loop=1&playlist=ID`
+- **Instagram / TikTok:** exigem download via yt-dlp antes de reproduzir — sem iframe fallback
+  - Ao adicionar: `saveMedia` → `startYoutubeDownload` imediato → `download_status: 'downloading'`
+  - Enquanto baixa: VideoPlayer exibe overlay "Baixando conteúdo…" e gradient animado
+  - Após conclusão: `onDownloadProgress` → `localFileStatus` resetado → reproduz como `<video>`
+  - Erro de download: overlay de erro + skip automático após 6s
+
+## IPC adicional — Social Media
+
+```js
+processSocial(url) → { type: 'instagram'|'tiktok'|'invalid', platform? }
+```
+
+`detectSocialPlatform()` em `main/index.js` valida padrões de URL Instagram e TikTok antes de aceitar.
 
 ---
 
@@ -234,6 +247,78 @@ docker-compose up --build   # sobe container com Xvfb
 
 ---
 
+## Deploy e Empacotamento
+
+### Estratégia
+**Não usar Docker para produção.** Empacotamento nativo via `electron-builder` em ambientes reais (Windows, macOS, Linux) para garantir compilação correta do `better-sqlite3`.
+
+### Blindagem Kiosk (produção)
+
+Em `src/main/index.js`, a `BrowserWindow` de produção usa:
+```js
+fullscreen: !is.dev,
+kiosk: !is.dev,
+alwaysOnTop: !is.dev,
+```
+
+Dupla camada de bloqueio de atalhos de saída:
+1. **`before-input-event`** — bloqueia `Ctrl/Cmd+W/Q/R`, `Alt+F4`, `F11` dentro da janela
+2. **`globalShortcut`** — registra os mesmos como no-op no nível do sistema
+3. **`globalShortcut.unregisterAll()`** no `will-quit` para não vazar registros
+
+### Scripts de empacotamento
+
+| Script | Resultado |
+|---|---|
+| `npm run build:win` | `dist/totem-<v>-setup.exe` |
+| `npm run build:mac` | `dist/totem-<v>-x64.dmg` + `arm64.dmg` |
+| `npm run build:linux` | `dist/totem-<v>.AppImage` |
+| `npm run release:mac` | `release/TOTEM-v<v>-mac.zip` (instalador + scripts + README) |
+| `npm run release:linux` | `release/TOTEM-v<v>-linux.zip` |
+| `npm run release:win` | `release\TOTEM-v<v>-windows.zip` |
+
+Pacotes de release ficam em `release/` (ignorado pelo git).
+
+### Dependências externas (máquina hospedeira)
+
+- `yt-dlp` + `ffmpeg` devem ser instalados na máquina do evento (não no build)
+- Scripts: `scripts/install_dependencies.sh` (macOS/Linux) e `scripts/install_dependencies.bat` (Windows)
+- O app busca `yt-dlp` em: `/usr/local/bin`, `/opt/homebrew/bin`, `/usr/bin`, `userData/yt-dlp`
+
+### electron-builder.yml — targets definitivos
+
+| Plataforma | Target | Arch |
+|---|---|---|
+| Windows | `nsis` | x64 |
+| macOS | `dmg` + `zip` | x64 + arm64 |
+| Linux | `AppImage` | x64 |
+
+- `npmRebuild: true` — recompila `better-sqlite3` para a arquitetura alvo
+- `asarUnpack: node_modules/better-sqlite3/**` — binários nativos fora do asar
+
+---
+
+## CI/CD — GitHub Actions
+
+Arquivo: `.github/workflows/build.yml`
+
+**Gatilhos:** push na `main` + `workflow_dispatch` (manual)
+
+**Matriz:** `windows-latest`, `macos-latest`, `ubuntu-latest` — cada OS compila nativamente (crítico para `better-sqlite3`)
+
+**Fluxo por runner:**
+1. `actions/checkout@v4`
+2. `actions/setup-node@v4` (Node 20)
+3. `actions/setup-python@v5` (para `node-gyp`)
+4. Dependências de sistema (Linux: `apt`, Windows: `windows-build-tools`)
+5. `npm ci` → aciona `postinstall` → recompila módulo nativo
+6. `npm run release` → `electron-vite build` + `electron-builder`
+7. `actions/upload-artifact@v4` → artefatos disponíveis em **Actions → workflow → Artifacts**
+
+`CSC_IDENTITY_AUTO_DISCOVERY: false` desativa notarização macOS (exige conta paga Apple).
+
+---
+
 ## Bugs corrigidos / decisões importantes
 
 1. **`saveLead` undefined** — preload chamava IPC inexistente; handler adicionado em database.js
@@ -251,9 +336,13 @@ docker-compose up --build   # sobe container com Xvfb
 ## Comandos úteis
 
 ```bash
-npm run dev          # desenvolvimento (hot reload)
-npm run build        # build de produção
-npm run build:mac    # empacota .dmg para macOS
-npm run build:linux  # empacota AppImage para Linux
+npm run dev           # desenvolvimento (hot reload)
+npm run build         # compila React/Electron (sem empacotar)
+npm run build:mac     # empacota .dmg para macOS
+npm run build:linux   # empacota AppImage para Linux
+npm run build:win     # empacota .exe para Windows
+npm run release:mac   # build + zip para operador (macOS)
+npm run release:linux # build + zip para operador (Linux)
+npm run release:win   # build + zip para operador (Windows)
 npm run start:container  # roda build no container (--no-sandbox)
 ```

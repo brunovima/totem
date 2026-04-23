@@ -4,8 +4,16 @@
 # Execute UMA VEZ na máquina hospedeira antes de iniciar o totem.
 #
 # Dependências instaladas:
-#   • yt-dlp  — download de vídeos do YouTube como MP4 local
+#   • yt-dlp  — download de vídeos do YouTube, Instagram e TikTok como MP4 local
 #   • ffmpeg  — mescla streams de áudio+vídeo (exigido pelo yt-dlp)
+#
+# Plataformas suportadas pelo yt-dlp:
+#   YouTube · Instagram (posts, Reels, IGTV públicos)
+#   TikTok  (vídeos públicos, links curtos vm.tiktok.com)
+#
+# NOTA Instagram: vídeos privados ou de contas fechadas exigem cookies.
+#   Para exportar cookies do navegador:
+#   yt-dlp --cookies-from-browser chrome -o arquivo.mp4 <URL>
 # ─────────────────────────────────────────────────────────────────────────────
 set -euo pipefail
 

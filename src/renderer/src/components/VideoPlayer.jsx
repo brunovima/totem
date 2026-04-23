@@ -111,6 +111,11 @@ export default function VideoPlayer({ onStartQuiz, onAdminLogin }) {
   const [ytFallbackActive, setYtFallback] = useState(false)
   // localFileStatus: { [mediaId]: true (existe) | false (não existe) | null (verificando) }
   const [localFileStatus, setLocalFileStatus] = useState({})
+  // readyIdx: índice do item cujo primeiro frame já foi decodificado pelo GPU.
+  // Derivar videoReady = (readyIdx === idx) garante reset SÍNCRONO no mesmo render
+  // em que idx muda — sem esperar useEffect, eliminando o flash de tela preta.
+  const [readyIdx, setReadyIdx]           = useState(-1)
+  const videoReady = readyIdx === idx
 
   const loadPlaylist = useCallback(() => {
     window.api
@@ -129,7 +134,8 @@ export default function VideoPlayer({ onStartQuiz, onAdminLogin }) {
     if (playlist.length > 0 && idx >= playlist.length) setIdx(0)
   }, [playlist.length, idx])
 
-  // Reseta estados YouTube ao trocar de item
+  // Reseta estados derivados ao trocar de item
+  // videoReady NÃO precisa de reset aqui — é derivado como (readyIdx === idx)
   useEffect(() => {
     setYtValidation(null)
     setYtFallback(false)
@@ -155,15 +161,35 @@ export default function VideoPlayer({ onStartQuiz, onAdminLogin }) {
   // localStatus: undefined=sem local_file | null=verificando | true=existe | false=ausente
   const localStatus = current?.local_file ? localFileStatus[current.id] : undefined
 
-  // Cache local confirmado apenas quando existsSync retornou true
-  const hasLocalCache = current?.type === 'youtube' && localStatus === true
+  // Instagram / TikTok — a playlist já só contém itens com download_status='done'
+  // (filtrado no get-playlist). local_file sempre presente quando isSocial.
+  const isSocial = current?.type === 'instagram' || current?.type === 'tiktok'
 
-  // Pipeline de validação YouTube — só corre quando não há cache local confirmado
+  // Cache local confirmado: YouTube com local_file ou social (sempre tem local_file)
+  const hasLocalCache = ((current?.type === 'youtube') || isSocial) && localStatus === true
+
+  // Refresca playlist quando download de social mídia conclui
+  useEffect(() => {
+    const unsub = window.api.onDownloadProgress?.((data) => {
+      if (data.status === 'done') {
+        // Força re-verificação do arquivo para o item atual
+        setLocalFileStatus((prev) => {
+          const next = { ...prev }
+          delete next[data.id]
+          return next
+        })
+        loadPlaylist()
+      }
+    })
+    return () => unsub?.()
+  }, [loadPlaylist])
+
+  // Pipeline de validação YouTube — só corre para tipo youtube sem cache local
   useEffect(() => {
     if (!current || current.type !== 'youtube') return
-    if (localStatus === true) return   // arquivo local confirmado, sem necessidade
-    if (localStatus === null) return   // ainda verificando arquivo local, aguarda
-    if (ytFallbackActive) return       // runtime fallback ativo
+    if (localStatus === true) return
+    if (localStatus === null) return
+    if (ytFallbackActive) return
 
     setYtValidation('checking')
 
@@ -203,22 +229,28 @@ export default function VideoPlayer({ onStartQuiz, onAdminLogin }) {
     return () => clearTimeout(t)
   }, [idx, current?.id, current?.type, hasLocalCache, ytFallbackActive, ytValidation, handleNext])
 
+
   // ── Derivar estado de renderização ───────────────────────────────────────────
-  const isCheckingLocal = current?.type === 'youtube' && current?.local_file && (localStatus === undefined || localStatus === null)
-  const isYouTube       = current?.type === 'youtube' && !hasLocalCache && !ytFallbackActive && ytValidation?.type === 'embed'
-  const isVideo         = current?.type === 'file' || (current?.type === 'youtube' && (hasLocalCache || ytFallbackActive))
-  const isImage         = current?.type === 'image'
-  const isWebpage       = current?.type === 'webpage'
+  const isCheckingLocal = (current?.type === 'youtube' || isSocial) &&
+    current?.local_file && (localStatus === undefined || localStatus === null)
+  const isYouTube = current?.type === 'youtube' && !hasLocalCache && !ytFallbackActive && ytValidation?.type === 'embed'
+  const isVideo   = current?.type === 'file' ||
+    (current?.type === 'youtube' && (hasLocalCache || ytFallbackActive)) ||
+    (isSocial && localStatus === true)
+  const isImage   = current?.type === 'image'
+  const isWebpage = current?.type === 'webpage'
 
   const videoSource = isVideo
-    ? (hasLocalCache || ytFallbackActive ? current.local_file : current.source)
+    ? (hasLocalCache || ytFallbackActive || isSocial ? current.local_file : current.source)
     : null
   const localSrc       = buildMediaUrl(videoSource)
   const imageSrc       = isImage ? buildMediaUrl(current.source) : null
   const youtubeVideoId = isYouTube ? (ytValidation?.videoId || extractYouTubeId(current.source)) : null
 
-  // Gradient: sem mídia, carregando, verificando arquivo local, aguardando validação YT
+  // Gradient: sem mídia, carregando, verificando arquivo local, aguardando validação YT,
+  // ou vídeo local não pronto no GPU
   const showGradient = !current || loading || isCheckingLocal ||
+    (isVideo && !videoReady) ||
     (current?.type === 'youtube' && !hasLocalCache && !ytFallbackActive && ytValidation?.type !== 'embed')
 
   return (
@@ -263,9 +295,19 @@ export default function VideoPlayer({ onStartQuiz, onAdminLogin }) {
           loop={playlist.length === 1}
           muted={false}
           playsInline
+          onCanPlay={() => setReadyIdx(idx)}
           onEnded={playlist.length > 1 ? handleNext : undefined}
           onError={handleNext}
-          style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover', pointerEvents: 'none' }}
+          style={{
+            position: 'absolute', inset: 0, width: '100%', height: '100%',
+            objectFit: 'cover', pointerEvents: 'none',
+            // Camada de compositing dedicada no GPU — previne tela preta ao trocar mídia
+            transform: 'translateZ(0)',
+            backfaceVisibility: 'hidden',
+            willChange: 'transform',
+            opacity: videoReady ? 1 : 0,
+            transition: 'opacity 80ms linear'
+          }}
         />
       )}
 
@@ -316,6 +358,7 @@ export default function VideoPlayer({ onStartQuiz, onAdminLogin }) {
 
       {/* Zona invisível do botão admin (canto inferior direito) */}
       <div
+        data-testid="admin-trigger"
         onClick={(e) => { e.stopPropagation(); onAdminLogin() }}
         style={{ position: 'absolute', bottom: 0, right: 0, width: '80px', height: '80px', zIndex: 20, cursor: 'pointer', opacity: 0 }}
       />

@@ -45,10 +45,12 @@ contextBridge.exposeInMainWorld('api', {
   // Hardware / Energia
   displaySleep: () => ipcRenderer.invoke('display-sleep'),
   getApiInfo: () => ipcRenderer.invoke('get-api-info'),
+  exitKiosk: () => ipcRenderer.invoke('exit-kiosk'),
 
   // yt-dlp
   startYoutubeDownload: (data) => ipcRenderer.invoke('start-ytdlp-download', data),
   processYouTube: (url) => ipcRenderer.invoke('process-youtube', url),
+  processSocial: (url) => ipcRenderer.invoke('process-social', url),
 
   // Diagnóstico
   debugMedia: () => ipcRenderer.invoke('debug-media'),

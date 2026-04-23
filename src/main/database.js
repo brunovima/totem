@@ -159,6 +159,8 @@ function setupIpcHandlers() {
         AND (COALESCE(schedule_end_date,'')   = '' OR date('now','localtime') <= schedule_end_date)
         AND (COALESCE(schedule_start_time,'') = '' OR time('now','localtime') >= schedule_start_time)
         AND (COALESCE(schedule_end_time,'')   = '' OR time('now','localtime') <= schedule_end_time)
+        AND (type NOT IN ('instagram','tiktok')
+             OR (COALESCE(local_file,'') != '' AND download_status = 'done'))
       ORDER BY playlist_order ASC
     `).all()
   )
