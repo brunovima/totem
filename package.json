@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 ﻿{
     "name":  "totem-app",
     "productName":  "TOTEM",
@@ -68,4 +69,69 @@
                             "vite":  "^7.2.6",
                             "vitest":  "^2.1.0"
                         }
+=======
+{
+  "name": "totem-app",
+  "productName": "TOTEM",
+  "version": "1.0.0",
+  "description": "An Electron application with React",
+  "main": "./out/main/index.js",
+  "author": "example.com",
+  "homepage": "https://electron-vite.org",
+  "scripts": {
+    "format": "prettier --write .",
+    "lint": "eslint --cache .",
+    "start": "electron-vite preview",
+    "dev": "electron-vite dev",
+    "build": "electron-vite build",
+    "postinstall": "electron-builder install-app-deps",
+    "build:unpack": "npm run build && electron-builder --dir",
+    "build:win": "npm run build && electron-builder --win",
+    "build:mac": "npm run build && electron-builder --mac",
+    "build:linux": "npm run build && electron-builder --linux",
+    "release": "npm run build && electron-builder",
+    "pretest": "npm rebuild better-sqlite3 --update-binary 2>/dev/null || npm rebuild better-sqlite3",
+    "test": "npx vitest run",
+    "posttest": "node_modules/.bin/electron-rebuild -f -w better-sqlite3 2>/dev/null || true",
+    "test:watch": "npx vitest",
+    "test:db": "npx vitest run tests/integration/database.test.js",
+    "test:tools": "npx vitest run tests/integration/tools.test.js",
+    "pretest:e2e": "node_modules/.bin/electron-rebuild -f -w better-sqlite3 2>/dev/null || true",
+    "test:e2e": "npx playwright test",
+    "test:e2e:ui": "npx playwright test --ui",
+    "release:mac": "bash scripts/package_release.sh mac",
+    "release:linux": "bash scripts/package_release.sh linux",
+    "release:win": "scripts\\package_release.bat",
+    "start:container": "electron --no-sandbox out/main/index.js",
+    "sync": "bash scripts/sync_github.sh"
+  },
+  "dependencies": {
+    "@electron-toolkit/preload": "^3.0.2",
+    "@electron-toolkit/utils": "^4.0.0",
+    "better-sqlite3": "^12.9.0",
+    "express": "^5.2.1",
+    "lucide-react": "^1.8.0",
+    "qrcode.react": "^4.2.0",
+    "react-player": "^3.4.0"
+  },
+  "devDependencies": {
+    "@electron-toolkit/eslint-config": "^2.1.0",
+    "@electron-toolkit/eslint-config-prettier": "^3.0.0",
+    "@playwright/test": "^1.49.0",
+    "@vitejs/plugin-react": "^5.1.1",
+    "electron": "^39.8.9",
+    "electron-builder": "^26.0.12",
+    "electron-rebuild": "^3.2.9",
+    "electron-vite": "^5.0.0",
+    "eslint": "^9.39.1",
+    "eslint-plugin-react": "^7.37.5",
+    "eslint-plugin-react-hooks": "^7.1.1",
+    "eslint-plugin-react-refresh": "^0.4.24",
+    "prettier": "^3.8.3",
+    "react": "^19.2.1",
+    "react-dom": "^19.2.1",
+    "vite": "^7.2.6",
+    "vitest": "^2.1.0"
+  }
+>>>>>>> 70b3ade9e3306c6ba50e2067d5b996b9ebceb618
 }

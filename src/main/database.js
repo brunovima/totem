@@ -22,7 +22,11 @@ export function initDB() {
     );
     CREATE TABLE IF NOT EXISTS leads (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
+<<<<<<< HEAD
       nome TEXT, telefone TEXT, email TEXT, score INTEGER,
+=======
+      nome TEXT, email TEXT, score INTEGER,
+>>>>>>> 70b3ade9e3306c6ba50e2067d5b996b9ebceb618
       data_hora DATETIME DEFAULT CURRENT_TIMESTAMP
     );
     CREATE TABLE IF NOT EXISTS settings (
@@ -37,6 +41,7 @@ export function initDB() {
       active INTEGER DEFAULT 0,
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP
     );
+<<<<<<< HEAD
     CREATE TABLE IF NOT EXISTS jogos_memoria (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       nome TEXT NOT NULL,
@@ -47,6 +52,8 @@ export function initDB() {
       jogo_id INTEGER NOT NULL,
       caminho_arquivo TEXT NOT NULL
     );
+=======
+>>>>>>> 70b3ade9e3306c6ba50e2067d5b996b9ebceb618
   `)
 
   // Migrações para instalações existentes
@@ -57,10 +64,13 @@ export function initDB() {
   try { db.exec("ALTER TABLE media ADD COLUMN schedule_start_time TEXT DEFAULT ''") } catch {}
   try { db.exec("ALTER TABLE media ADD COLUMN schedule_end_time TEXT DEFAULT ''") } catch {}
   try { db.exec("ALTER TABLE media ADD COLUMN local_file TEXT DEFAULT ''") } catch {}
+<<<<<<< HEAD
   try { db.exec("ALTER TABLE leads ADD COLUMN telefone TEXT DEFAULT ''") } catch {}
   try { db.exec('ALTER TABLE leads ADD COLUMN autorizado INTEGER DEFAULT 0') } catch {}
   // Remove borda azul padrão de instalações existentes
   db.prepare("UPDATE settings SET value='0' WHERE key='border_width' AND value='8'").run()
+=======
+>>>>>>> 70b3ade9e3306c6ba50e2067d5b996b9ebceb618
   try { db.exec("ALTER TABLE media ADD COLUMN download_status TEXT DEFAULT ''") } catch {}
   // Limpa NULLs residuais nas colunas de agendamento (SQLite pode armazenar NULL em vez de DEFAULT para linhas pré-existentes)
   db.prepare("UPDATE media SET schedule_start_date='' WHERE schedule_start_date IS NULL").run()
@@ -81,7 +91,10 @@ export function initDB() {
   // Credenciais padrão — INSERT OR IGNORE preserva valores já alterados pelo usuário
   db.prepare("INSERT OR IGNORE INTO settings (key, value) VALUES ('admin_username', 'admin')").run()
   db.prepare("INSERT OR IGNORE INTO settings (key, value) VALUES ('admin_password', '1234')").run()
+<<<<<<< HEAD
   db.prepare("INSERT OR IGNORE INTO settings (key, value) VALUES ('border_width', '0')").run()
+=======
+>>>>>>> 70b3ade9e3306c6ba50e2067d5b996b9ebceb618
 
   setupIpcHandlers()
 }
@@ -127,8 +140,13 @@ function setupIpcHandlers() {
     db.prepare('SELECT * FROM leads ORDER BY data_hora DESC').all()
   )
   ipcMain.handle('save-lead', (_e, lead) =>
+<<<<<<< HEAD
     db.prepare('INSERT INTO leads (nome, telefone, email, score, autorizado) VALUES (?, ?, ?, ?, ?)')
       .run(lead.nome, lead.telefone || '', lead.email || '', lead.score, lead.autorizado ? 1 : 0).changes > 0
+=======
+    db.prepare('INSERT INTO leads (nome, email, score) VALUES (?, ?, ?)')
+      .run(lead.nome, lead.email, lead.score).changes > 0
+>>>>>>> 70b3ade9e3306c6ba50e2067d5b996b9ebceb618
   )
   ipcMain.handle('delete-leads', (_e, ids) => {
     const stmt = db.prepare('DELETE FROM leads WHERE id = ?')
@@ -216,6 +234,7 @@ function setupIpcHandlers() {
     db.prepare('UPDATE media SET schedule_start_date=?,schedule_end_date=?,schedule_start_time=?,schedule_end_time=? WHERE id=?')
       .run(startDate||'', endDate||'', startTime||'', endTime||'', id).changes > 0
   )
+<<<<<<< HEAD
 
   // ── Jogo da Memória ─────────────────────────────────────────────────────────
   ipcMain.handle('get-jogos', () =>
@@ -273,4 +292,6 @@ function setupIpcHandlers() {
       .run(jogoId, caminho_arquivo).lastInsertRowid
   )
 
+=======
+>>>>>>> 70b3ade9e3306c6ba50e2067d5b996b9ebceb618
 }

@@ -5,8 +5,11 @@ import QuizEngine from './components/QuizEngine.jsx'
 import LeadForm from './components/LeadForm.jsx'
 import AdminPanel from './components/AdminPanel.jsx'
 import ThankYou from './components/ThankYou.jsx'
+<<<<<<< HEAD
 import JogoMemoria from './components/JogoMemoria.jsx'
 import SelecionarJogo from './components/SelecionarJogo.jsx'
+=======
+>>>>>>> 70b3ade9e3306c6ba50e2067d5b996b9ebceb618
 import Frame from './components/Frame.jsx'
 
 function App() {
@@ -83,6 +86,7 @@ function App() {
 
       {currentScreen === 'lead' && (
         <LeadForm
+<<<<<<< HEAD
           onConfirm={async (data) => {
             setCurrentLead(data)
             try {
@@ -102,11 +106,17 @@ function App() {
             } catch {
               setCurrentScreen('quiz')
             }
+=======
+          onConfirm={(data) => {
+            setCurrentLead(data)
+            setCurrentScreen('quiz')
+>>>>>>> 70b3ade9e3306c6ba50e2067d5b996b9ebceb618
           }}
           onCancel={() => setCurrentScreen('video')}
         />
       )}
 
+<<<<<<< HEAD
       {currentScreen === 'selecionar-jogo' && (
         <SelecionarJogo
           onSelectQuiz={() => setCurrentScreen('quiz')}
@@ -115,6 +125,8 @@ function App() {
         />
       )}
 
+=======
+>>>>>>> 70b3ade9e3306c6ba50e2067d5b996b9ebceb618
       {currentScreen === 'quiz' && (
         <QuizEngine
           onComplete={async ({ score, total, quizTitle }) => {
@@ -126,6 +138,7 @@ function App() {
         />
       )}
 
+<<<<<<< HEAD
       {currentScreen === 'jogo-memoria' && (
         <JogoMemoria
           logoPath={frameSettings.logoPath}
@@ -136,6 +149,8 @@ function App() {
         />
       )}
 
+=======
+>>>>>>> 70b3ade9e3306c6ba50e2067d5b996b9ebceb618
       {currentScreen === 'thankyou' && thankYouData && (
         <ThankYou
           {...thankYouData}

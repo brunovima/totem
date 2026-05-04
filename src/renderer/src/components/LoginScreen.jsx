@@ -104,11 +104,17 @@ export default function LoginScreen({ onBack, onLoginSuccess }) {
           type="text"
           value={username}
           onFocus={() => setActiveField('username')}
+<<<<<<< HEAD
           inputMode="none"
           autoComplete="off"
           onChange={() => {}}
           placeholder="USUÁRIO"
           style={{ ...fieldStyle('username'), caretColor: '#2563eb' }}
+=======
+          readOnly
+          placeholder="USUÁRIO"
+          style={fieldStyle('username')}
+>>>>>>> 70b3ade9e3306c6ba50e2067d5b996b9ebceb618
         />
 
         <label style={{ display: 'block', fontSize: 'clamp(10px, 1.1vw, 12px)', fontWeight: 700, color: '#6b7280', letterSpacing: '0.06em', marginBottom: '6px' }}>
@@ -118,11 +124,17 @@ export default function LoginScreen({ onBack, onLoginSuccess }) {
           type="password"
           value={password}
           onFocus={() => setActiveField('password')}
+<<<<<<< HEAD
           inputMode="none"
           autoComplete="off"
           onChange={() => {}}
           placeholder="Senha"
           style={{ ...fieldStyle('password'), marginBottom: error ? '14px' : '20px', caretColor: '#2563eb' }}
+=======
+          readOnly
+          placeholder="Senha"
+          style={{ ...fieldStyle('password'), marginBottom: error ? '14px' : '20px' }}
+>>>>>>> 70b3ade9e3306c6ba50e2067d5b996b9ebceb618
         />
 
         {error && (

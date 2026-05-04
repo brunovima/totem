@@ -18,7 +18,10 @@ files:
 asarUnpack:
   - resources/**
   - node_modules/better-sqlite3/**
+<<<<<<< HEAD
   - node_modules/sharp/**
+=======
+>>>>>>> 70b3ade9e3306c6ba50e2067d5b996b9ebceb618
 # npmRebuild: true garante que better-sqlite3 seja compilado para a arquitetura alvo
 npmRebuild: true
 win:

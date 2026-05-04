@@ -37,6 +37,7 @@ contextBridge.exposeInMainWorld('api', {
   setMediaDuration: (data) => ipcRenderer.invoke('set-media-duration', data),
   setMediaSchedule: (data) => ipcRenderer.invoke('set-media-schedule', data),
 
+<<<<<<< HEAD
   // Jogo da Memória — Admin
   getJogos: () => ipcRenderer.invoke('get-jogos'),
   createJogo: (nome) => ipcRenderer.invoke('create-jogo', nome),
@@ -49,6 +50,8 @@ contextBridge.exposeInMainWorld('api', {
   // Jogo da Memória — Cliente
   getJogoAtivo: () => ipcRenderer.invoke('get-jogo-ativo'),
 
+=======
+>>>>>>> 70b3ade9e3306c6ba50e2067d5b996b9ebceb618
   // Wi-Fi
   wifiScan: () => ipcRenderer.invoke('wifi-scan'),
   wifiConnect: (data) => ipcRenderer.invoke('wifi-connect', data),
@@ -58,9 +61,12 @@ contextBridge.exposeInMainWorld('api', {
   displaySleep: () => ipcRenderer.invoke('display-sleep'),
   getApiInfo: () => ipcRenderer.invoke('get-api-info'),
   exitKiosk: () => ipcRenderer.invoke('exit-kiosk'),
+<<<<<<< HEAD
   enterKiosk: () => ipcRenderer.invoke('enter-kiosk'),
   getKioskState: () => ipcRenderer.invoke('get-kiosk-state'),
   openExternal: (url) => ipcRenderer.invoke('open-external', url),
+=======
+>>>>>>> 70b3ade9e3306c6ba50e2067d5b996b9ebceb618
 
   // yt-dlp
   startYoutubeDownload: (data) => ipcRenderer.invoke('start-ytdlp-download', data),

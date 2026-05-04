@@ -1,11 +1,18 @@
 import { app, shell, BrowserWindow, ipcMain, dialog, protocol, session, net, globalShortcut } from 'electron'
 import { join, basename, extname } from 'path'
+<<<<<<< HEAD
 import { copyFileSync, mkdirSync, existsSync, readdirSync, unlinkSync, writeFileSync } from 'fs'
 import { execFile, spawn } from 'child_process'
 import { promisify } from 'util'
 import { pathToFileURL } from 'url'
 import { networkInterfaces } from 'os'
 import sharp from 'sharp'
+=======
+import { copyFileSync, mkdirSync, existsSync, readdirSync, unlinkSync } from 'fs'
+import { execFile, spawn } from 'child_process'
+import { promisify } from 'util'
+import { networkInterfaces } from 'os'
+>>>>>>> 70b3ade9e3306c6ba50e2067d5b996b9ebceb618
 import express from 'express'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
 import icon from '../../resources/icon.png?asset'
@@ -18,12 +25,16 @@ app.commandLine.appendSwitch('autoplay-policy', 'no-user-gesture-required')
 // Evita congelamento de abas/renderizadores em background (crítico para kiosk 24/7)
 app.commandLine.appendSwitch('disable-renderer-backgrounding')
 app.commandLine.appendSwitch('disable-background-timer-throttling')
+<<<<<<< HEAD
 // Habilita decodificação de vídeo por hardware (evita travamento)
 app.commandLine.appendSwitch('ignore-gpu-blocklist')
 app.commandLine.appendSwitch('enable-gpu-rasterization')
 app.commandLine.appendSwitch('enable-zero-copy')
 app.commandLine.appendSwitch('enable-hardware-overlays', 'single-fullscreen,single-on-top,underlay')
 app.commandLine.appendSwitch('disable-software-rasterizer')
+=======
+app.commandLine.appendSwitch('ignore-gpu-blocklist')
+>>>>>>> 70b3ade9e3306c6ba50e2067d5b996b9ebceb618
 
 // Deve ser chamado ANTES de app.whenReady()
 // stream:true habilita range requests necessários para seek/buffer de vídeo
@@ -122,6 +133,7 @@ function parseLinuxWifi(output) {
     .filter(Boolean)
 }
 
+<<<<<<< HEAD
 // Parseia saída do "netsh wlan show networks mode=bssid" (EN e PT)
 function parseWindowsWifi(output) {
   const networks = []
@@ -180,6 +192,8 @@ async function windowsWifiConnect(ssid, password) {
   }
 }
 
+=======
+>>>>>>> 70b3ade9e3306c6ba50e2067d5b996b9ebceb618
 async function getMacWifiInterface() {
   try {
     const { stdout } = await execFileAsync('/usr/sbin/networksetup', ['-listallhardwareports'])
@@ -440,6 +454,7 @@ app.whenReady().then(() => {
 
   // ── totem-media://: serve arquivos locais com range-request support ──
   // Dois modos:
+<<<<<<< HEAD
   //   totem-media://media/filename.mp4  → userData/media/filename (padrão)
   //   totem-media:///caminho/absoluto   → caminho absoluto legado (logos)
   //
@@ -470,6 +485,27 @@ app.whenReady().then(() => {
 
     return net.fetch(fileUrl, { headers }).catch((err) => {
       console.error('[totem-media] erro:', fileUrl, err.message)
+=======
+  //   totem-media://media/filename.mp4  → userData/media/filename (novo padrão)
+  //   totem-media:///caminho/absoluto   → file:///caminho/absoluto  (legado: logos)
+  protocol.handle('totem-media', (request) => {
+    const rawPath = request.url.slice('totem-media://'.length)
+    let fileUrl
+
+    if (rawPath.startsWith('media/')) {
+      const filename  = decodeURIComponent(rawPath.slice('media/'.length))
+      const mediaDir  = join(app.getPath('userData'), 'media')
+      const filePath  = join(mediaDir, filename)
+      fileUrl = 'file://' + filePath.split('/').map(encodeURIComponent).join('/')
+    } else {
+      // Legado: path absoluto já codificado na URL
+      fileUrl = 'file://' + rawPath
+    }
+
+    const headers = Object.fromEntries(request.headers.entries())
+    return net.fetch(fileUrl, { headers }).catch((err) => {
+      console.error('[totem-media] fetch falhou:', fileUrl, err.message)
+>>>>>>> 70b3ade9e3306c6ba50e2067d5b996b9ebceb618
       return new Response('Not found', { status: 404 })
     })
   })
@@ -524,6 +560,7 @@ app.whenReady().then(() => {
     return { name: basename(src), filename }
   })
 
+<<<<<<< HEAD
   // ── Upload de imagens para Jogo da Memória: dialog multi + sharp resize ──
   ipcMain.handle('upload-imagens-memoria', async (_e, { jogoId }) => {
     const { canceled, filePaths } = await dialog.showOpenDialog(mainWindow, {
@@ -550,6 +587,9 @@ app.whenReady().then(() => {
   })
 
   // ── Kiosk mode controls (uso exclusivo do admin) ────────────────────────
+=======
+  // ── Sair do modo kiosk/tela cheia (uso exclusivo do admin) ─────────────
+>>>>>>> 70b3ade9e3306c6ba50e2067d5b996b9ebceb618
   ipcMain.handle('exit-kiosk', () => {
     if (!mainWindow || mainWindow.isDestroyed()) return
     mainWindow.setKiosk(false)
@@ -557,6 +597,7 @@ app.whenReady().then(() => {
     mainWindow.setAlwaysOnTop(false)
   })
 
+<<<<<<< HEAD
   ipcMain.handle('enter-kiosk', () => {
     if (!mainWindow || mainWindow.isDestroyed()) return
     mainWindow.setAlwaysOnTop(true)
@@ -574,6 +615,8 @@ app.whenReady().then(() => {
     shell.openExternal(url)
   })
 
+=======
+>>>>>>> 70b3ade9e3306c6ba50e2067d5b996b9ebceb618
   // ── Dormir tela imediatamente ────────────────────────────────────────────
   ipcMain.handle('display-sleep', async () => {
     try {
@@ -771,10 +814,13 @@ app.whenReady().then(() => {
         } catch {}
         return { networks: [], error: lastErr?.message || 'Nenhuma rede encontrada. Verifique se o Wi-Fi está ativo.' }
       }
+<<<<<<< HEAD
       if (process.platform === 'win32') {
         const { stdout } = await execFileAsync(netshExe, ['wlan', 'show', 'networks', 'mode=bssid'])
         return { networks: parseWindowsWifi(stdout) }
       }
+=======
+>>>>>>> 70b3ade9e3306c6ba50e2067d5b996b9ebceb618
       return { networks: [], error: 'Plataforma não suportada para gestão de Wi-Fi.' }
     } catch (err) {
       return { networks: [], error: err.message }
@@ -794,8 +840,11 @@ app.whenReady().then(() => {
           ssid,
           password
         ])
+<<<<<<< HEAD
       } else if (process.platform === 'win32') {
         await windowsWifiConnect(ssid, password)
+=======
+>>>>>>> 70b3ade9e3306c6ba50e2067d5b996b9ebceb618
       } else {
         return { success: false, error: 'Plataforma não suportada.' }
       }
@@ -835,6 +884,7 @@ app.whenReady().then(() => {
           ? { connected: true, ssid: match[1].trim() }
           : { connected: false, ssid: null }
       }
+<<<<<<< HEAD
       if (process.platform === 'win32') {
         const { stdout } = await execFileAsync(netshExe, ['wlan', 'show', 'interfaces'])
         const ssidMatch = stdout.match(/^\s+SSID\s+:\s+(.+)$/m)
@@ -843,6 +893,8 @@ app.whenReady().then(() => {
         const connected = stateMatch?.[1]?.trim().toLowerCase().startsWith('connect') ?? false
         return { connected, ssid: connected ? ssidMatch?.[1]?.trim() ?? null : null }
       }
+=======
+>>>>>>> 70b3ade9e3306c6ba50e2067d5b996b9ebceb618
       return { connected: false, ssid: null }
     } catch {
       return { connected: false, ssid: null }

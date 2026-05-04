@@ -37,6 +37,7 @@ echo [RELEASE] Versao detectada: %VERSION%
 echo [RELEASE] Pacote: %PKG_NAME%.zip
 echo.
 
+<<<<<<< HEAD
 :: ── Recompila better-sqlite3 para Electron (garante binario Windows valido) ───
 echo [RELEASE] Recompilando better-sqlite3 para Electron Windows...
 call npx electron-rebuild -f -w better-sqlite3 2>nul
@@ -44,6 +45,8 @@ if %errorLevel% NEQ 0 call npx electron-builder install-app-deps 2>nul
 echo [RELEASE] Modulo nativo compilado.
 echo.
 
+=======
+>>>>>>> 70b3ade9e3306c6ba50e2067d5b996b9ebceb618
 :: ── Compila o codigo ──────────────────────────────────────────────────────────
 echo [RELEASE] Compilando codigo React/Electron...
 call npm run build

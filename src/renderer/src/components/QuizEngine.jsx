@@ -183,12 +183,15 @@ export default function QuizEngine({ onComplete }) {
             })}
           </div>
         </div>
+<<<<<<< HEAD
         {/* Footer NIT SECOM */}
         <div style={{ padding: '8px 16px', borderTop: '1px solid #f1f5f9', textAlign: 'center' }}>
           <span style={{ fontSize: '10px', color: '#cbd5e1', letterSpacing: '1.5px', textTransform: 'uppercase', fontFamily: FONT }}>
             Desenvolvido por NIT SECOM
           </span>
         </div>
+=======
+>>>>>>> 70b3ade9e3306c6ba50e2067d5b996b9ebceb618
       </div>
     </div>
   )

@@ -1,7 +1,10 @@
 import React, { useState, useEffect, useRef } from 'react'
 import { QRCodeSVG } from 'qrcode.react'
 import DiagnosticPanel from './DiagnosticPanel.jsx'
+<<<<<<< HEAD
 import GerenciarJogos from './GerenciarJogos.jsx'
+=======
+>>>>>>> 70b3ade9e3306c6ba50e2067d5b996b9ebceb618
 
 function getYoutubeId(url) {
   if (!url) return null
@@ -25,7 +28,11 @@ function SignalBars({ signal }) {
 const FONT = "'Roboto', sans-serif"
 
 const S = {
+<<<<<<< HEAD
   input: { padding: '14px', borderRadius: '10px', border: '1px solid #cbd5e1', fontSize: '16px', background: 'white', fontFamily: FONT },
+=======
+  input: { padding: '14px', borderRadius: '10px', border: '1px solid #cbd5e1', fontSize: '16px', outline: 'none', background: 'white', fontFamily: FONT },
+>>>>>>> 70b3ade9e3306c6ba50e2067d5b996b9ebceb618
   card:  { background: 'white', padding: '28px', borderRadius: '16px', marginBottom: '24px', boxShadow: '0 2px 12px rgba(0,0,0,0.07)' },
   btn:   (bg = '#2563eb') => ({ padding: '11px 22px', background: bg, color: 'white', border: 'none', borderRadius: '8px', cursor: 'pointer', fontWeight: 700, fontSize: '14px', fontFamily: FONT }),
   ghost: { padding: '10px 18px', borderRadius: '8px', border: '1px solid #e2e8f0', cursor: 'pointer', background: 'white', fontSize: '14px', fontFamily: FONT },
@@ -116,6 +123,7 @@ export default function AdminPanel({ onLogout }) {
 
   // ── Global ──
   const [feedback, setFeedback] = useState('')
+<<<<<<< HEAD
   const [kioskActive, setKioskActive] = useState(false)
   const inputRef = useRef(null)
 
@@ -137,6 +145,10 @@ export default function AdminPanel({ onLogout }) {
     window.api.getKioskState().then((s) => setKioskActive(!!s)).catch(() => {})
   }, [])
 
+=======
+  const inputRef = useRef(null)
+
+>>>>>>> 70b3ade9e3306c6ba50e2067d5b996b9ebceb618
   useEffect(() => {
     refreshData()
     setSelectedLeads(new Set())
@@ -190,6 +202,7 @@ export default function AdminPanel({ onLogout }) {
 
   // ════ Quizzes ════════════════════════════════════════════════════════════════
   const handleCreateQuiz = async () => {
+<<<<<<< HEAD
     const title = quizTitle.trim()
     if (!title) { showFeedback('Digite um nome para o quiz.'); return }
     try {
@@ -220,6 +233,24 @@ export default function AdminPanel({ onLogout }) {
     } catch {
       showFeedback('Erro ao salvar pergunta.')
     }
+=======
+    if (!quizTitle.trim()) return
+    await window.api.createQuiz(quizTitle.trim())
+    setQuizTitle('')
+    refreshData()
+  }
+
+  const handleSaveQuestion = async () => {
+    if (!qText) return
+    await window.api.saveQuestion({
+      quizId: selectedQuiz.id,
+      text: qText,
+      options: options.filter((o) => o !== ''),
+      correctIndex: parseInt(correct)
+    })
+    setQText(''); setOptions(['', '']); setCorrect(0)
+    refreshData()
+>>>>>>> 70b3ade9e3306c6ba50e2067d5b996b9ebceb618
   }
 
   // ════ Leads ══════════════════════════════════════════════════════════════════
@@ -243,8 +274,13 @@ export default function AdminPanel({ onLogout }) {
   }
 
   const handleExportCSV = () => {
+<<<<<<< HEAD
     const header = 'Nome,Telefone,Email,Score,LGPD_Autorizado,Data'
     const rows = leads.map((l) => `"${l.nome}","${l.telefone || ''}","${l.email || ''}",${l.score},${l.autorizado ? 'Sim' : 'Não'},"${l.data_hora}"`)
+=======
+    const header = 'Nome,Email,Score,Data'
+    const rows = leads.map((l) => `"${l.nome}","${l.email}",${l.score},"${l.data_hora}"`)
+>>>>>>> 70b3ade9e3306c6ba50e2067d5b996b9ebceb618
     const blob = new Blob(['\uFEFF' + [header, ...rows].join('\n')], { type: 'text/csv;charset=utf-8;' })
     const url = URL.createObjectURL(blob)
     const a = document.createElement('a')
@@ -429,7 +465,10 @@ export default function AdminPanel({ onLogout }) {
         </h2>
         <nav style={{ display: 'flex', flexDirection: 'column', gap: '4px', flex: 1 }}>
           <button onClick={() => changeTab('quizzes')}       style={navBtn(tab === 'quizzes')}>📝 Quizzes</button>
+<<<<<<< HEAD
           <button onClick={() => changeTab('jogos')}         style={navBtn(tab === 'jogos')}>🃏 Jogos</button>
+=======
+>>>>>>> 70b3ade9e3306c6ba50e2067d5b996b9ebceb618
           <button onClick={() => changeTab('leads')}         style={navBtn(tab === 'leads')}>👥 Leads</button>
           <button onClick={() => changeTab('midia')}         style={navBtn(tab === 'midia')}>🎬 Mídia</button>
           <button onClick={() => changeTab('wifi')}          style={navBtn(tab === 'wifi')}>📶 Wi-Fi</button>
@@ -437,6 +476,7 @@ export default function AdminPanel({ onLogout }) {
           <button onClick={() => changeTab('diagnostico')}   style={navBtn(tab === 'diagnostico')}>🔬 Diagnóstico</button>
         </nav>
         <button
+<<<<<<< HEAD
           onClick={async () => {
             if (kioskActive) {
               await window.api.exitKiosk()
@@ -456,6 +496,13 @@ export default function AdminPanel({ onLogout }) {
           title={kioskActive ? 'Sai do modo tela cheia para acessar o SO' : 'Ativa o modo tela cheia bloqueado'}
         >
           {kioskActive ? '⛶ DESATIVAR MODO KIOSK' : '⛶ ATIVAR MODO KIOSK'}
+=======
+          onClick={() => window.api.exitKiosk()}
+          style={{ padding: '12px', background: '#7c3aed', color: 'white', border: 'none', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold', fontFamily: FONT, marginBottom: '8px' }}
+          title="Sai do modo tela cheia para acessar o SO"
+        >
+          ⛶ SAIR DO KIOSK
+>>>>>>> 70b3ade9e3306c6ba50e2067d5b996b9ebceb618
         </button>
         <button onClick={onLogout} style={{ padding: '12px', background: '#ef4444', color: 'white', border: 'none', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold', fontFamily: FONT }}>
           SAIR DO PAINEL
@@ -512,8 +559,13 @@ export default function AdminPanel({ onLogout }) {
                         <input type="checkbox" checked={selectedLeads.size === leads.length && leads.length > 0} onChange={toggleSelectAll} style={{ width: '16px', height: '16px', cursor: 'pointer' }} />
                       )}
                     </th>
+<<<<<<< HEAD
                     {['Nome', 'Telefone', 'E-mail', 'Acertos', 'LGPD', 'Data/Hora'].map((h) => (
                       <th key={h} style={{ padding: '14px', textAlign: h === 'Acertos' || h === 'LGPD' ? 'center' : 'left', borderBottom: '1px solid #e2e8f0', fontSize: '13px', color: '#64748b' }}>{h}</th>
+=======
+                    {['Nome', 'E-mail', 'Acertos', 'Data/Hora'].map((h) => (
+                      <th key={h} style={{ padding: '14px', textAlign: h === 'Acertos' ? 'center' : 'left', borderBottom: '1px solid #e2e8f0', fontSize: '13px', color: '#64748b' }}>{h}</th>
+>>>>>>> 70b3ade9e3306c6ba50e2067d5b996b9ebceb618
                     ))}
                   </tr>
                 </thead>
@@ -524,6 +576,7 @@ export default function AdminPanel({ onLogout }) {
                         <input type="checkbox" checked={selectedLeads.has(l.id)} onChange={() => toggleSelectLead(l.id)} style={{ width: '16px', height: '16px', cursor: 'pointer' }} />
                       </td>
                       <td style={{ padding: '14px' }}>{l.nome}</td>
+<<<<<<< HEAD
                       <td style={{ padding: '14px', fontFamily: 'monospace', fontSize: '13px' }}>{l.telefone || '—'}</td>
                       <td style={{ padding: '14px' }}>{l.email || '—'}</td>
                       <td style={{ padding: '14px', textAlign: 'center', fontWeight: 'bold' }}>{l.score}</td>
@@ -534,11 +587,19 @@ export default function AdminPanel({ onLogout }) {
                           <span style={{ background: '#f1f5f9', color: '#94a3b8', padding: '2px 8px', borderRadius: '20px', fontSize: '11px', fontWeight: 700 }}>Não</span>
                         )}
                       </td>
+=======
+                      <td style={{ padding: '14px' }}>{l.email}</td>
+                      <td style={{ padding: '14px', textAlign: 'center', fontWeight: 'bold' }}>{l.score}</td>
+>>>>>>> 70b3ade9e3306c6ba50e2067d5b996b9ebceb618
                       <td style={{ padding: '14px', color: '#6b7280', fontSize: '13px' }}>{l.data_hora}</td>
                     </tr>
                   ))}
                   {!leads.length && (
+<<<<<<< HEAD
                     <tr><td colSpan={7} style={{ padding: '40px', textAlign: 'center', color: '#94a3b8' }}>Nenhum lead capturado ainda.</td></tr>
+=======
+                    <tr><td colSpan={5} style={{ padding: '40px', textAlign: 'center', color: '#94a3b8' }}>Nenhum lead capturado ainda.</td></tr>
+>>>>>>> 70b3ade9e3306c6ba50e2067d5b996b9ebceb618
                   )}
                 </tbody>
               </table>
@@ -546,6 +607,7 @@ export default function AdminPanel({ onLogout }) {
           </div>
         )}
 
+<<<<<<< HEAD
         {/* ══════════════════ ABA: JOGOS ══════════════════════════════════════ */}
         {tab === 'jogos' && (
           <div style={{ flex: 1, overflowY: 'auto', padding: '32px' }}>
@@ -553,6 +615,8 @@ export default function AdminPanel({ onLogout }) {
           </div>
         )}
 
+=======
+>>>>>>> 70b3ade9e3306c6ba50e2067d5b996b9ebceb618
         {/* ══════════════════ ABA: QUIZZES — lista ════════════════════════════ */}
         {tab === 'quizzes' && !selectedQuiz && (
           <div>
@@ -742,7 +806,11 @@ export default function AdminPanel({ onLogout }) {
             <div style={S.card}>
               <h3 style={{ marginTop: 0 }}>📂 Upload de Vídeo</h3>
               <div style={{ display: 'flex', gap: '10px', alignItems: 'center', flexWrap: 'wrap' }}>
+<<<<<<< HEAD
                 <button onClick={handleUploadVideo} style={S.btn('#6366f1')}>📂 Selecionar Vídeo</button>
+=======
+                <button ref={inputRef} onClick={handleUploadVideo} style={S.btn('#6366f1')}>📂 Selecionar Vídeo</button>
+>>>>>>> 70b3ade9e3306c6ba50e2067d5b996b9ebceb618
                 {pendingFile && (
                   <>
                     <span style={{ color: '#334155', fontWeight: '500', fontSize: '14px' }}>✓ {pendingFile.name}</span>

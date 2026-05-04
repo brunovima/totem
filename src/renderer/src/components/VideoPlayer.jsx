@@ -247,6 +247,7 @@ export default function VideoPlayer({ onStartQuiz, onAdminLogin }) {
   const imageSrc       = isImage ? buildMediaUrl(current.source) : null
   const youtubeVideoId = isYouTube ? (ytValidation?.videoId || extractYouTubeId(current.source)) : null
 
+<<<<<<< HEAD
   // Gradient animado: só quando não há mídia configurada ou ainda está carregando a playlist
   const showAnimatedGradient = !current || loading
 
@@ -257,12 +258,24 @@ export default function VideoPlayer({ onStartQuiz, onAdminLogin }) {
     (isVideo && !videoReady) ||
     (current?.type === 'youtube' && !hasLocalCache && !ytFallbackActive && ytValidation?.type !== 'embed')
   )
+=======
+  // Gradient: sem mídia, carregando, verificando arquivo local, aguardando validação YT,
+  // ou vídeo local não pronto no GPU
+  const showGradient = !current || loading || isCheckingLocal ||
+    (isVideo && !videoReady) ||
+    (current?.type === 'youtube' && !hasLocalCache && !ytFallbackActive && ytValidation?.type !== 'embed')
+>>>>>>> 70b3ade9e3306c6ba50e2067d5b996b9ebceb618
 
   return (
     <div style={{ position: 'relative', width: '100vw', height: '100vh', backgroundColor: '#000', overflow: 'hidden' }}>
 
+<<<<<<< HEAD
       {/* Gradient animado: apenas quando a playlist está vazia */}
       {showAnimatedGradient && (
+=======
+      {/* Gradient animado: visível sem mídia ou durante validação */}
+      {showGradient && (
+>>>>>>> 70b3ade9e3306c6ba50e2067d5b996b9ebceb618
         <div style={{
           position: 'absolute', inset: 0,
           background: 'linear-gradient(270deg, #111827, #1e3a8a, #111827)',
@@ -279,11 +292,14 @@ export default function VideoPlayer({ onStartQuiz, onAdminLogin }) {
         </div>
       )}
 
+<<<<<<< HEAD
       {/* Fundo estático durante carregamento de vídeo: evita conflito de compositor com vídeo */}
       {showStaticBg && (
         <div style={{ position: 'absolute', inset: 0, background: '#0f172a' }} />
       )}
 
+=======
+>>>>>>> 70b3ade9e3306c6ba50e2067d5b996b9ebceb618
       {/* Placeholder quando playlist está vazia e não está carregando */}
       {!loading && !current && <NoMediaPlaceholder />}
 
@@ -302,20 +318,35 @@ export default function VideoPlayer({ onStartQuiz, onAdminLogin }) {
           key={current.id + (ytFallbackActive ? '_fb' : '')}
           src={localSrc}
           autoPlay
+<<<<<<< HEAD
           preload="auto"
           loop={playlist.length === 1}
           muted={false}
           playsInline
           disablePictureInPicture
+=======
+          loop={playlist.length === 1}
+          muted={false}
+          playsInline
+>>>>>>> 70b3ade9e3306c6ba50e2067d5b996b9ebceb618
           onCanPlay={() => setReadyIdx(idx)}
           onEnded={playlist.length > 1 ? handleNext : undefined}
           onError={handleNext}
           style={{
             position: 'absolute', inset: 0, width: '100%', height: '100%',
             objectFit: 'cover', pointerEvents: 'none',
+<<<<<<< HEAD
             // Sem camadas GPU forçadas: evita tearing/split em drivers Windows
             opacity: videoReady ? 1 : 0,
             transition: 'opacity 150ms ease-in'
+=======
+            // Camada de compositing dedicada no GPU — previne tela preta ao trocar mídia
+            transform: 'translateZ(0)',
+            backfaceVisibility: 'hidden',
+            willChange: 'transform',
+            opacity: videoReady ? 1 : 0,
+            transition: 'opacity 80ms linear'
+>>>>>>> 70b3ade9e3306c6ba50e2067d5b996b9ebceb618
           }}
         />
       )}
