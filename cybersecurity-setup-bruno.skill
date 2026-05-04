@@ -1,0 +1,182 @@
+---
+name: cybersecurity-setup-bruno
+description: Configuração completa de segurança em camadas (PREVENÇÃO → DETECÇÃO → RESPOSTA → CONFORMIDADE) para projetos Node.js, React e sistemas com dados sensíveis. Automatiza setup de git-secrets, npm audit, Semgrep, Snyk, Trivy, ZAP, Defect Dojo e auditoria. 100% local, sem exposição de código.
+---
+
+Você está configurando **segurança em profundidade** para seus projetos (Mídia Indoor, Gestor de Finanças, MasterMed Pro). Vou guiar pelo setup completo em 4 fases com checklist acionável.
+
+**IMPORTANTE:** Você controla cada ferramenta. Nada é instalado sem sua aprovação. Dados do projeto NUNCA saem do seu ambiente.
+
+---
+
+## 📋 **FASE 1: PREVENÇÃO (Bloqueia antes do código sair)**
+
+Vamos configurar **git-secrets** + **npm audit** para impedir credenciais no repositório.
+
+Responda:
+
+1. **Qual é seu sistema operacional?**
+   - Windows (PowerShell / Git Bash)
+   - macOS
+   - Linux (Ubuntu/Debian)
+
+2. **Qual projeto testar primeiro?**
+   - Mídia Indoor (Node.js + SQLite + JWT)
+   - Gestor de Finanças (React + Supabase)
+   - MasterMed Pro (HTML/CSS/JS)
+   - Outro
+
+3. **Seu projeto já está em um repositório Git?**
+   - Sim (qual plataforma? GitHub, GitLab, Bitbucket)
+   - Não (vou criar um)
+
+Após suas respostas, eu fornecerei:
+- ✅ Comando exato para seu SO
+- ✅ Arquivo `.gitignore` customizado
+- ✅ Pre-commit hooks prontos
+- ✅ Teste para validar instalação
+
+---
+
+## 🔍 **FASE 2: DETECÇÃO (Encontra vulnerabilidades durante dev)**
+
+Após PREVENÇÃO estar OK, vamos rodar:
+
+**Você vai executar (em ordem):**
+
+```
+1. SKILL cybersecurity-scan (análise local + contexto)
+   └─ 8 categorias × 90 checks = relatório estruturado
+
+2. Semgrep (SAST - encontra SQL injection, XSS, hardcoded secrets)
+   └─ Config OWASP Top 10 pré-pronta
+
+3. Snyk (SCA - escaneia dependências vulneráveis)
+   └─ Free account (100 testes/mês)
+
+4. Trivy (composição de software + container scanning)
+   └─ Download e rodar local
+
+5. npm audit (built-in - dependências conhecidas)
+   └─ Rodar antes de cada commit
+```
+
+**Checklist desta fase:**
+- [ ] Semgrep instalado e configurado
+- [ ] Snyk account criado e autenticado
+- [ ] Trivy baixado e testado
+- [ ] npm audit rodando sem críticos
+- [ ] Relatórios consolidados em JSON
+
+---
+
+## 🚨 **FASE 3: RESPOSTA (Testa em staging antes de produção)**
+
+Quando código está em **staging**, roda testes dinâmicos:
+
+**Ferramentas:**
+
+```
+OWASP ZAP (Dynamic Application Security Testing)
+└─ Escaneia endpoints em runtime
+└─ Detecta: SQLi, XSS, CSRF, auth logic
+
+Burp Community (alternativa à ZAP, melhor UI)
+└─ Teste manual + automático
+
+SQLMap (especializado em SQL injection)
+└─ Testa cada parâmetro
+```
+
+**Checklist desta fase:**
+- [ ] ZAP/Burp instalado e configurado
+- [ ] Staging environment acessível
+- [ ] Teste em endpoints críticos realizado
+- [ ] Relatório de dinâmica validado
+
+---
+
+## 📊 **FASE 4: CONFORMIDADE (Auditoria contínua)**
+
+Centraliza todos os achados e valida conformidade:
+
+**Ferramentas:**
+
+```
+Defect Dojo (gerencia todos os findings)
+└─ Dashboard de vulnerabilidades
+└─ Rastreamento de remedição
+
+ELK Stack ou Grafana (monitoring)
+└─ Logs centralizados
+└─ Alertas em tempo real
+
+Audit Trail (logs estruturados)
+└─ Quem acessou o quê / quando
+└─ LGPD compliance
+```
+
+**Checklist desta fase:**
+- [ ] Defect Dojo rodando
+- [ ] CI/CD falha se crítico encontrado
+- [ ] Relatório consolidado automático
+- [ ] Re-teste de fix validado
+- [ ] Audit trail ativo
+
+---
+
+## ⚙️ **FLOW COMPLETO (seu workflow)**
+
+```
+Dev faz commit
+     ↓
+[Git-secrets bloqueia]
+     ↓
+Pull Request aberto
+     ↓
+[CI/CD dispara automático]
+  ├─ npm audit
+  ├─ Semgrep
+  ├─ Snyk
+  ├─ Trivy
+     ↓
+[Claude analisa achados]
+  └─ Gera patches
+     ↓
+[Code review humano]
+  ├─ Aprova ou rejeita
+  └─ Se crítico: bloqueia merge
+     ↓
+[Deploy em staging]
+     ↓
+[ZAP escaneia runtime]
+     ↓
+[Defect Dojo consolida]
+     ↓
+[Re-teste valida fixes]
+     ↓
+[Deploy em produção]
+     ↓
+[Audit trail registra]
+```
+
+---
+
+## 🎯 **Próximos Passos**
+
+**Responda as 3 perguntas da FASE 1:**
+
+1. Seu SO?
+2. Qual projeto primeiro?
+3. Git já configurado?
+
+Eu vou gerar:
+- ✅ Comandos exatos (copy-paste)
+- ✅ Arquivos prontos (.gitignore, config, scripts)
+- ✅ CI/CD pipeline (GitHub Actions / GitLab CI)
+- ✅ Testes de validação
+- ✅ Documentação (passo-a-passo)
+
+**Depois disso, vamos para FASE 2, 3 e 4 com o mesmo nível de detalhe.**
+
+Qual é o próximo passo?

@@ -1,0 +1,53 @@
+﻿# Environment
+.env
+.env.local
+.env.*.local
+.env.production
+
+# Firebase & Secrets
+.firebaserc
+firebase-key.json
+secrets/
+credentials/
+*.pem
+*.key
+*.cert
+
+# Node
+node_modules/
+npm-debug.log
+yarn-error.log
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+logs/
+*.log
+
+# Build
+dist/
+build/
+.next/
+
+# Electron
+release/
+*.exe
+*.dmg
+*.zip
+
+# SQLite
+*.db
+*.sqlite
+*.sqlite3
+
+# Testing
+coverage/
+.nyc_output/

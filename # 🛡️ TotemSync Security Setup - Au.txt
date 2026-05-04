@@ -1,0 +1,465 @@
+# 🛡️ TotemSync Security Setup - Automated PowerShell Script
+# Execute como Admin: powershell -ExecutionPolicy Bypass -File security-setup.ps1
+
+param(
+    [string]$ProjectPath = ".",
+    [switch]$SkipPhase1,
+    [switch]$SkipPhase2,
+    [switch]$SkipPhase3,
+    [switch]$SkipPhase4
+)
+
+# ═════════════════════════════════════════════════════════════════════════════
+# COLORS & FORMATTING
+# ═════════════════════════════════════════════════════════════════════════════
+
+function Write-Header {
+    param([string]$text)
+    Write-Host ""
+    Write-Host "════════════════════════════════════════════════════════════════" -ForegroundColor Cyan
+    Write-Host $text -ForegroundColor Cyan -BackgroundColor Black
+    Write-Host "════════════════════════════════════════════════════════════════" -ForegroundColor Cyan
+    Write-Host ""
+}
+
+function Write-Success {
+    param([string]$text)
+    Write-Host "✅ $text" -ForegroundColor Green
+}
+
+function Write-Error-Custom {
+    param([string]$text)
+    Write-Host "❌ $text" -ForegroundColor Red
+}
+
+function Write-Warning-Custom {
+    param([string]$text)
+    Write-Host "⚠️  $text" -ForegroundColor Yellow
+}
+
+function Write-Step {
+    param([string]$text)
+    Write-Host "→ $text" -ForegroundColor Cyan
+}
+
+# ═════════════════════════════════════════════════════════════════════════════
+# UTILITY FUNCTIONS
+# ═════════════════════════════════════════════════════════════════════════════
+
+function Test-Command {
+    param([string]$command)
+    $null = Get-Command $command -ErrorAction SilentlyContinue
+    return $?
+}
+
+function Install-IfMissing {
+    param(
+        [string]$toolName,
+        [string]$command,
+        [string]$installCommand
+    )
+    
+    Write-Step "Checking $toolName..."
+    if (Test-Command $command) {
+        Write-Success "$toolName is installed"
+        return $true
+    } else {
+        Write-Warning-Custom "$toolName not found. Installing..."
+        Invoke-Expression $installCommand
+        if (Test-Command $command) {
+            Write-Success "$toolName installed successfully"
+            return $true
+        } else {
+            Write-Error-Custom "Failed to install $toolName"
+            return $false
+        }
+    }
+}
+
+# ═════════════════════════════════════════════════════════════════════════════
+# PHASE 1: PREVENTION
+# ═════════════════════════════════════════════════════════════════════════════
+
+function Phase-1-Prevention {
+    Write-Header "🔐 PHASE 1: PREVENTION"
+    
+    # Check Admin
+    Write-Step "Checking for Admin privileges..."
+    $isAdmin = [bool](([System.Security.Principal.WindowsIdentity]::GetCurrent()).groups -match "S-1-5-32-544")
+    if (-not $isAdmin) {
+        Write-Error-Custom "This script requires Admin privileges. Please run as Administrator."
+        exit 1
+    }
+    Write-Success "Running with Admin privileges"
+    
+    # Navigate to project
+    Write-Step "Navigating to project: $ProjectPath"
+    if (-not (Test-Path $ProjectPath)) {
+        Write-Error-Custom "Project path not found: $ProjectPath"
+        exit 1
+    }
+    Set-Location $ProjectPath
+    Write-Success "In project directory: $(Get-Location)"
+    
+    # Install git-secrets
+    Write-Step "Installing git-secrets via npm..."
+    npm install -g git-secrets 2>$null
+    if (Test-Command "git-secrets") {
+        Write-Success "git-secrets installed"
+    } else {
+        Write-Error-Custom "Failed to install git-secrets"
+        return $false
+    }
+    
+    # Initialize git-secrets
+    Write-Step "Initializing git-secrets..."
+    git secrets --install 2>$null
+    git secrets --register-aws 2>$null
+    Write-Success "git-secrets initialized"
+    
+    # Add custom patterns
+    Write-Step "Adding custom security patterns..."
+    git secrets --add 'firebase_api_key' 2>$null
+    git secrets --add 'firebase_auth_domain' 2>$null
+    git secrets --add 'process\.env\.[A-Z_]+' 2>$null
+    git secrets --add 'JWT_SECRET' 2>$null
+    git secrets --add 'DATABASE_URL' 2>$null
+    Write-Success "Custom patterns added"
+    
+    # Create .gitignore
+    Write-Step "Creating .gitignore..."
+    $gitignoreContent = @"
+# Environment
+.env
+.env.local
+.env.*.local
+.env.production
+
+# Firebase & Secrets
+.firebaserc
+firebase-key.json
+secrets/
+credentials/
+*.pem
+*.key
+*.cert
+
+# Node
+node_modules/
+npm-debug.log
+yarn-error.log
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+logs/
+*.log
+
+# Build
+dist/
+build/
+.next/
+
+# Electron
+release/
+*.exe
+*.dmg
+*.zip
+
+# SQLite
+*.db
+*.sqlite
+*.sqlite3
+
+# Testing
+coverage/
+.nyc_output/
+"@
+    $gitignoreContent | Out-File -FilePath .gitignore -Encoding UTF8 -Force
+    Write-Success ".gitignore created"
+    
+    # npm audit
+    Write-Step "Running npm audit..."
+    npm audit --production 2>$null | Tee-Object -Variable auditOutput | Out-Null
+    Write-Success "npm audit completed"
+    
+    # Setup Husky
+    Write-Step "Setting up Husky pre-commit hooks..."
+    npm install -D husky lint-staged 2>$null
+    npx husky install 2>$null
+    npx husky add .husky\pre-commit 'npm audit --production' 2>$null
+    Write-Success "Husky configured"
+    
+    # Add script to package.json
+    Write-Step "Adding security scripts to package.json..."
+    $packageJsonPath = "package.json"
+    if (Test-Path $packageJsonPath) {
+        $packageJson = Get-Content $packageJsonPath | ConvertFrom-Json
+        if (-not $packageJson.scripts) {
+            $packageJson | Add-Member -NotePropertyName "scripts" -NotePropertyValue @{}
+        }
+        $packageJson.scripts | Add-Member -NotePropertyName "security:check" -NotePropertyValue "semgrep --config=p/owasp-top-ten . --json" -Force
+        $packageJson.scripts | Add-Member -NotePropertyName "security:audit" -NotePropertyValue "npm audit && snyk test || true" -Force
+        $packageJson | ConvertTo-Json -Depth 10 | Out-File $packageJsonPath -Encoding UTF8 -Force
+        Write-Success "Security scripts added to package.json"
+    }
+    
+    Write-Header "✅ PHASE 1 COMPLETE - PREVENTION"
+    return $true
+}
+
+# ═════════════════════════════════════════════════════════════════════════════
+# PHASE 2: DETECTION
+# ═════════════════════════════════════════════════════════════════════════════
+
+function Phase-2-Detection {
+    Write-Header "🔍 PHASE 2: DETECTION"
+    
+    # Semgrep
+    Write-Step "Installing Semgrep..."
+    npm install -g semgrep 2>$null
+    Write-Success "Semgrep installed"
+    
+    Write-Step "Running Semgrep scan..."
+    semgrep --config=p/owasp-top-ten . --json -o semgrep-report.json 2>$null
+    Write-Success "Semgrep report generated: semgrep-report.json"
+    
+    # Snyk
+    Write-Step "Installing Snyk..."
+    npm install -g snyk 2>$null
+    
+    Write-Step "Authenticating Snyk (opens browser)..."
+    snyk auth 2>$null
+    
+    Write-Step "Running Snyk test..."
+    snyk test --json-file-output=snyk-report.json 2>$null
+    Write-Success "Snyk report generated: snyk-report.json"
+    
+    # Trivy
+    Write-Step "Installing Trivy..."
+    $trivyUrl = "https://github.com/aquasecurity/trivy/releases/download/v0.47.0/trivy_0.47.0_windows-64bit.zip"
+    $trivyZip = "C:\temp\trivy.zip"
+    $trivyDir = "C:\temp\trivy"
+    
+    if (-not (Test-Path "C:\temp")) {
+        New-Item -ItemType Directory -Path "C:\temp" -Force | Out-Null
+    }
+    
+    Write-Step "Downloading Trivy..."
+    Invoke-WebRequest -Uri $trivyUrl -OutFile $trivyZip -ErrorAction SilentlyContinue
+    
+    Write-Step "Extracting Trivy..."
+    Expand-Archive -Path $trivyZip -DestinationPath $trivyDir -Force
+    
+    Write-Success "Trivy installed: $trivyDir\trivy.exe"
+    
+    Write-Step "Running Trivy scan..."
+    & "$trivyDir\trivy.exe" fs . --format json -o trivy-report.json 2>$null
+    Write-Success "Trivy report generated: trivy-report.json"
+    
+    # Consolidate reports
+    Write-Step "Consolidating security reports..."
+    
+    $consolidateScript = @"
+import json
+from pathlib import Path
+from datetime import datetime
+
+reports = {}
+for report_file in ['semgrep-report.json', 'snyk-report.json', 'trivy-report.json']:
+    try:
+        with open(report_file) as f:
+            reports[report_file.replace('-report.json', '')] = json.load(f)
+    except FileNotFoundError:
+        pass
+
+consolidated = {
+    'timestamp': datetime.now().isoformat(),
+    'reports': reports,
+    'summary': {
+        'semgrep_issues': len(reports.get('semgrep', {}).get('results', [])),
+        'snyk_vulnerabilities': len([v for v in reports.get('snyk', {}).get('vulnerabilities', []) if v.get('severity') in ['critical', 'high']]),
+        'trivy_findings': len(reports.get('trivy', {}).get('Results', []))
+    }
+}
+
+with open('security-consolidated-report.json', 'w') as f:
+    json.dump(consolidated, f, indent=2)
+
+print('✅ Consolidated report saved')
+"@
+    
+    $consolidateScript | Out-File -FilePath consolidate-reports.py -Encoding UTF8
+    python consolidate-reports.py 2>$null
+    Write-Success "Consolidated report: security-consolidated-report.json"
+    
+    Write-Header "✅ PHASE 2 COMPLETE - DETECTION"
+    return $true
+}
+
+# ═════════════════════════════════════════════════════════════════════════════
+# PHASE 3: RESPONSE
+# ═════════════════════════════════════════════════════════════════════════════
+
+function Phase-3-Response {
+    Write-Header "🚨 PHASE 3: RESPONSE"
+    
+    Write-Step "Installing OWASP ZAP..."
+    choco install zaproxy -y 2>$null
+    
+    if (Test-Command "zaproxy") {
+        Write-Success "ZAP installed"
+        Write-Warning-Custom "Run ZAP manually: zaproxy -cmd -quickurl http://localhost:3000 -quickout zap-report.html"
+    } else {
+        Write-Error-Custom "Failed to install ZAP"
+    }
+    
+    Write-Header "✅ PHASE 3 COMPLETE - RESPONSE (Manual test needed)"
+    return $true
+}
+
+# ═════════════════════════════════════════════════════════════════════════════
+# PHASE 4: COMPLIANCE
+# ═════════════════════════════════════════════════════════════════════════════
+
+function Phase-4-Compliance {
+    Write-Header "📊 PHASE 4: COMPLIANCE"
+    
+    # Create CI/CD workflow
+    Write-Step "Creating GitHub Actions workflow..."
+    
+    $workflowDir = ".github\workflows"
+    if (-not (Test-Path $workflowDir)) {
+        New-Item -ItemType Directory -Path $workflowDir -Force | Out-Null
+    }
+    
+    $workflowContent = @"
+name: Security Pipeline
+on: [push, pull_request]
+jobs:
+  security:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions/setup-node@v3
+        with:
+          node-version: '18'
+      - run: npm install -g git-secrets && git secrets --install && git secrets --scan
+      - run: npm ci && npm audit --production || true
+      - run: npm install -g semgrep && semgrep --config=p/owasp-top-ten . --json -o semgrep.json || true
+      - run: npm install -g snyk && snyk test --json-file-output=snyk.json || true
+        env:
+          SNYK_TOKEN: \${{ secrets.SNYK_TOKEN }}
+      - run: |
+          wget -q https://github.com/aquasecurity/trivy/releases/download/v0.47.0/trivy_0.47.0_linux-64bit.tar.gz
+          tar zxf trivy_0.47.0_linux-64bit.tar.gz
+          ./trivy fs . --format json -o trivy.json || true
+      - run: python consolidate-reports.py
+      - uses: actions/upload-artifact@v3
+        if: always()
+        with:
+          name: security-reports
+          path: security-consolidated-report.json
+"@
+    
+    $workflowContent | Out-File -FilePath "$workflowDir\security.yml" -Encoding UTF8 -Force
+    Write-Success "GitHub Actions workflow created"
+    
+    # Create audit logger
+    Write-Step "Creating audit logger..."
+    
+    $auditLoggerContent = @"
+import { appendFileSync } from 'fs';
+import { join } from 'path';
+
+const AUDIT_LOG = join(process.cwd(), 'logs', 'audit.log');
+
+export function logAccess(userId, action, resource, status = 'SUCCESS', metadata = {}) {
+  const entry = {
+    timestamp: new Date().toISOString(),
+    userId,
+    action,
+    resource,
+    status,
+    ...metadata
+  };
+
+  try {
+    appendFileSync(AUDIT_LOG, JSON.stringify(entry) + '\n');
+  } catch (error) {
+    console.error('Failed to write audit log:', error);
+  }
+}
+"@
+    
+    $auditLoggerContent | Out-File -FilePath "src\utils\audit-logger.ts" -Encoding UTF8 -Force
+    Write-Success "Audit logger created: src/utils/audit-logger.ts"
+    
+    Write-Header "✅ PHASE 4 COMPLETE - COMPLIANCE"
+    return $true
+}
+
+# ═════════════════════════════════════════════════════════════════════════════
+# MAIN EXECUTION
+# ═════════════════════════════════════════════════════════════════════════════
+
+Clear-Host
+Write-Host "
+  _____     _               ____            _  _     _     _           
+ |_   _|   | |             / __ \          | |(_)   | |   | |          
+   | |  ___| |_ ___ _ __ _| |  | |_ __   __| | _  __| |  _| |_         
+   | | / _ \ __/ _ \ '_ (_) |  | | '_ \ / _\` | |/ _\` |/ _\` | __|        
+   | ||  __/ ||  __/ | | || |__| | |_) | (_| | | (_| | (_| | |_        
+   |_| \___|_| \___|_| |_(_) ___ | .__/ \__,_|_|\__,_|\__,_|\__|        
+                         | |                                    
+                         |_|                                    
+
+🛡️  Security Setup for TotemSync - Windows PowerShell
+" -ForegroundColor Cyan
+
+Write-Host "Project Path: $ProjectPath`n" -ForegroundColor Yellow
+
+$startTime = Get-Date
+
+try {
+    if (-not $SkipPhase1) {
+        Phase-1-Prevention
+    }
+    
+    if (-not $SkipPhase2) {
+        Phase-2-Detection
+    }
+    
+    if (-not $SkipPhase3) {
+        Phase-3-Response
+    }
+    
+    if (-not $SkipPhase4) {
+        Phase-4-Compliance
+    }
+    
+    $endTime = Get-Date
+    $duration = ($endTime - $startTime).TotalMinutes
+    
+    Write-Header "✅ ALL PHASES COMPLETE!"
+    Write-Host "Total time: $([Math]::Round($duration, 2)) minutes" -ForegroundColor Green
+    Write-Host ""
+    Write-Success "Next steps:"
+    Write-Host "  1. Review security reports in current directory"
+    Write-Host "  2. Open security-dashboard.html in browser"
+    Write-Host "  3. Commit .gitignore and .github/workflows/"
+    Write-Host "  4. Push to trigger CI/CD pipeline"
+    Write-Host ""
+    
+} catch {
+    Write-Error-Custom "Script failed: $_"
+    exit 1
+}

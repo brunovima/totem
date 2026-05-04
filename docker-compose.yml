@@ -1,0 +1,49 @@
+version: '3.8'
+
+# ─────────────────────────────────────────────────────────────────────────────
+# TOTEM — Docker Compose
+#
+# Modos de uso:
+#   Monitor dedicado (Linux/Pi): docker-compose up           → usa display físico
+#   Headless / VNC:              docker-compose --profile vnc up → acesso remoto
+#   Desenvolvimento:             docker-compose --profile dev up
+# ─────────────────────────────────────────────────────────────────────────────
+
+services:
+
+  # ── App principal do Totem ────────────────────────────────────────────────
+  totem:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: totem-kiosk
+    restart: unless-stopped
+    environment:
+      # Para usar o display físico do host: DISPLAY=:0
+      # Para display virtual (headless): deixe vazio — entrypoint inicia Xvfb
+      - DISPLAY=${DISPLAY:-}
+      - SCREEN_RESOLUTION=${SCREEN_RESOLUTION:-1920x1080x24}
+      # Desabilita sandbox Electron (necessário no Docker)
+      - ELECTRON_DISABLE_SECURITY_WARNINGS=1
+    volumes:
+      # Compartilha socket X11 do host (necessário para display físico)
+      - /tmp/.X11-unix:/tmp/.X11-unix
+      # Persistência: banco SQLite + uploads de mídia
+      - totem-data:/root/.config/totem
+      # Acesso aos dispositivos de vídeo (GPU opcional)
+    devices:
+      - /dev/dri:/dev/dri
+    # Necessário para nmcli gerir WiFi no host
+    network_mode: host
+    privileged: false
+    cap_add:
+      - NET_ADMIN
+      - SYS_PTRACE
+
+volumes:
+  totem-data:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: ${TOTEM_DATA_PATH:-./data}

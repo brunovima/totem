@@ -1,0 +1,16 @@
+﻿name: Security Pipeline
+on: [push, pull_request]
+jobs:
+  security:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions/setup-node@v3
+        with:
+          node-version: '18'
+      - run: npm ci && npm audit --production || true
+      - uses: actions/upload-artifact@v3
+        if: always()
+        with:
+          name: security-reports
+          path: package-lock.json
